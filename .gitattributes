@@ -1,0 +1,4 @@
+# Keep LF everywhere: shell scripts, Dockerfiles and EC2 user-data break with CRLF.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/coverage
+**/.env
+.git
+infra
+docs
+loadtest
+backend/tests
+frontend/tests
