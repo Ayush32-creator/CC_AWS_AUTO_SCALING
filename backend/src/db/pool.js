@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import pg from 'pg';
+import { createSecretPasswordProvider } from './secretPassword.js';
 
 // Return BIGINT/NUMERIC counts as JS numbers (values here stay well below 2^53).
 pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number.parseInt(v, 10));
@@ -18,7 +19,9 @@ export function createPool(dbConfig, logger) {
     port: dbConfig.port,
     database: dbConfig.database,
     user: dbConfig.user,
-    password: dbConfig.password,
+    password: dbConfig.secretArn
+      ? createSecretPasswordProvider({ secretArn: dbConfig.secretArn, region: dbConfig.awsRegion })
+      : dbConfig.password,
     ssl,
     max: dbConfig.poolMax,
     idleTimeoutMillis: 30000,

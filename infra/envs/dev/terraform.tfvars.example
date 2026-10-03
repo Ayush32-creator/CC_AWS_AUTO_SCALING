@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars (git-ignored) and fill in the values printed by
+#   cd ../../bootstrap && terraform output
+
+image_tag             = "REPLACE_WITH_GIT_SHA"          # e.g. output of: git rev-parse --short HEAD
+artifacts_bucket_name = "cc-checkout-artifacts-<ACCOUNT_ID>"
+
+# Optional overrides (defaults shown)
+# enable_nat_gateway   = true            # false saves ~$0.056/h (instances get public IPs)
+# alb_ingress_cidrs    = ["0.0.0.0/0"]   # e.g. ["203.0.113.7/32"] to allow only your IP
+# asg_min_size         = 1
+# asg_desired_capacity = 2
+# asg_max_size         = 4
+# target_requests_per_instance_per_minute = 300
+# target_cpu_percent   = 60

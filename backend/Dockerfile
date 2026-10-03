@@ -32,6 +32,11 @@ COPY backend/src ./src
 COPY backend/migrations ./migrations
 COPY --from=frontend /build/frontend/dist ./public
 
+# Amazon RDS certificate bundle so the app can verify the database's TLS
+# certificate (DB_SSL=true + DB_SSL_CA_PATH on AWS). Public CA data, not a secret.
+# (Placed directly in /app: ADD --chmod also applies to any directory it creates.)
+ADD --chmod=644 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /app/rds-global-bundle.pem
+
 # Run as the unprivileged "node" user that ships with the base image.
 USER node
 EXPOSE 3000

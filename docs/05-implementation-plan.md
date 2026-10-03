@@ -26,6 +26,17 @@ CC_CP/
 └── README.md
 ```
 
+## Status
+
+| Phase | Status |
+|---|---|
+| 1 Planning | ✅ Approved |
+| 2 Application | ✅ Approved |
+| 3 Docker + IaC | ✅ Complete, awaiting review (nothing applied) |
+| 4–6 | Not started |
+
+Decisions: region **ap-south-1 (Mumbai)**. Git is initialised with one commit per phase and no remote push.
+
 ## Phases
 
 | Phase | Key tasks | Done when… | AWS cost |
@@ -34,7 +45,7 @@ CC_CP/
 | **2 App** | Express API, migrations, idempotent checkout, React UI, unit + integration tests, docker-compose for local Postgres | `npm test` passes; full checkout works at `localhost`; concurrent duplicate-key test creates exactly 1 order | $0 |
 | **3 Docker + IaC** | Dockerfile, all Terraform modules, `fmt`/`validate`/`tflint`, `terraform plan` (no apply) | Image runs locally; `terraform validate` is clean; plan reviewed with you | $0 (plan only) |
 | **4 Deploy + scaling** | Apply bootstrap, push image, apply dev, verify ALB/health checks, ASG scale-out/in | App reachable through the ALB; instance count changes under load | ~$0.14/h, **with your approval** |
-| **5 Ops & security** | Dashboard, alarms, EMF metrics, IAM review, CI/CD workflows, SLA/cost docs | Alarms fire in a test; CI is green | Included above |
+| **5 Ops & security** | Dashboard, alarms, log metric filters (`OrdersPlaced`/`OrdersFailed`/`CheckoutLatency`), IAM review, CI/CD workflows with a GitHub OIDC role, SLA/cost docs. **Stale-`PENDING` order reaper** (found in Phase 2; see docs/06 §6). Optional least-privilege `app_user` for the DB. | Alarms fire in a test; CI is green; a stale `PENDING` order is released by the reaper in an integration test | Included above |
 | **6 Load test & report** | k6 ramp/spike/duplicate tests, failure drills (terminate instance, reboot RDS), graphs, final report | Results tables + screenshots in `docs/` | ~$1–2 |
 
 ## Prerequisites to install (needed from Phase 2 / 3 / 4)

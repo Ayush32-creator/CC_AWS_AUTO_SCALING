@@ -2,7 +2,7 @@
 
 A cloud computing course project: a React + Node.js checkout application deployed on AWS. It runs on EC2 instances in an Auto Scaling Group behind an Application Load Balancer, uses RDS PostgreSQL for storage, and is monitored with CloudWatch. All infrastructure is provisioned with Terraform.
 
-**Current status:** Phase 2 (local application) is complete and awaiting review. No AWS resources exist yet.
+**Current status:** Phase 3 (Docker + Terraform) is complete and awaiting review. The Terraform has been validated and tested offline only; **no AWS resources exist yet**. Region: ap-south-1 (Mumbai).
 
 | Doc | Contents |
 |---|---|
@@ -11,6 +11,7 @@ A cloud computing course project: a React + Node.js checkout application deploye
 | [docs/03-syllabus-mapping.md](docs/03-syllabus-mapping.md) | Unit I–VI mapping and deliberate exclusions |
 | [docs/04-cost-estimate.md](docs/04-cost-estimate.md) | Hourly/monthly costs and guardrails |
 | [docs/05-implementation-plan.md](docs/05-implementation-plan.md) | Repository layout, phase plan, prerequisites |
+| [docs/06-infrastructure.md](docs/06-infrastructure.md) | Terraform stacks and modules, validation results, AWS prerequisites, deploy runbook |
 
 ## Repository layout
 
@@ -18,6 +19,7 @@ A cloud computing course project: a React + Node.js checkout application deploye
 backend/     Express API (src/), SQL migrations + seed, tests, Dockerfile
 frontend/    React + Vite SPA, tests
 docker/      Postgres init script (creates the checkout_test database)
+infra/       Terraform: bootstrap/ (state, ECR, budget), modules/, envs/dev/
 docker-compose.yml, .env.example
 docs/        Design documentation
 ```
@@ -78,3 +80,7 @@ cd frontend; npm run dev
 `GET /api/health` · `GET /api/health/ready` · `GET /api/instance` · `GET /api/products` · `GET /api/products/:id` · `POST /api/cart/quote` · `POST /api/orders` (requires `Idempotency-Key`) · `GET /api/orders/:id`
 
 Full details are in [docs/02-api-and-data-model.md](docs/02-api-and-data-model.md).
+
+## Infrastructure (Terraform)
+
+See [docs/06-infrastructure.md](docs/06-infrastructure.md) for the module overview, offline validation commands (`terraform validate`, `terraform test`, TFLint, Trivy), the AWS-side prerequisites, and the Phase 4 deploy/destroy runbook.

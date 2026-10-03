@@ -10,3 +10,9 @@ coverage/
 *.tfvars
 !*.tfvars.example
 crash.log
+
+# Terraform backend config with account-specific bucket name
+infra/**/backend.hcl
+infra/.tflint.d/
+# Lock files are committed only for root stacks (bootstrap, envs/dev)
+infra/modules/**/.terraform.lock.hcl

@@ -78,7 +78,9 @@ flowchart LR
 | Private-app | 10.0.11.0/24, 10.0.12.0/24 | `0.0.0.0/0 → NAT` | EC2 instances (private IPs only) |
 | Private-DB | 10.0.21.0/24, 10.0.22.0/24 | local only | RDS (no internet route at all) |
 
-Two AZs are the minimum: the ALB and the RDS subnet group both require subnets in two or more AZs.
+Two AZs are the minimum: the ALB and the RDS subnet group both require subnets in two or more AZs. Region: **ap-south-1 (Mumbai)**, AZs `ap-south-1a` and `ap-south-1b`.
+
+*Added in Phase 3:* a free **S3 gateway endpoint** on the app and public route tables. ECR image layers are served from S3, so image pulls bypass the NAT Gateway and avoid NAT data charges.
 
 **Security groups (chained, least privilege):**
 

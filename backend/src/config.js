@@ -34,6 +34,9 @@ export function loadConfig() {
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
+      // On AWS: ARN of the RDS-managed secret; takes precedence over DB_PASSWORD.
+      secretArn: process.env.DB_SECRET_ARN || undefined,
+      awsRegion: process.env.AWS_REGION || undefined,
       ssl: boolEnv('DB_SSL', false),
       sslCaPath: process.env.DB_SSL_CA_PATH || undefined,
       poolMax: intEnv('DB_POOL_MAX', 10),

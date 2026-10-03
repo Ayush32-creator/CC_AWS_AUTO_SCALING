@@ -17,6 +17,7 @@
     "test:integration": "vitest run tests/integration --no-file-parallelism"
   },
   "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.1146.0",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "pg": "^8.23.1",

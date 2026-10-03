@@ -1,0 +1,63 @@
+#!/bin/bash
+# EC2 user-data: runs once at first boot of every Auto Scaling Group instance.
+# Installs Docker, pulls the app image from ECR and runs it. No secrets here:
+# the container reads the DB password from Secrets Manager via the instance role.
+# Rendered by Terraform templatefile(): $${name} placeholders are filled in by
+# Terraform; plain $VAR references are evaluated by bash on the instance.
+set -euo pipefail
+exec > >(tee -a /var/log/user-data.log) 2>&1
+echo "[user-data] starting at $(date -Is)"
+
+retry() {
+  local n=0
+  until "$@"; do
+    n=$((n + 1))
+    if [ "$n" -ge 5 ]; then echo "[user-data] failed after $n attempts: $*"; return 1; fi
+    sleep $((n * 5))
+  done
+}
+
+# --- Docker -----------------------------------------------------------------
+retry dnf install -y docker
+systemctl enable --now docker
+
+# --- Instance identity (IMDSv2) -----------------------------------------------
+TOKEN=$(curl -sS -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+INSTANCE_ID=$(curl -sS -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+
+# --- Pull the image from ECR ---------------------------------------------------
+login_ecr() {
+  aws ecr get-login-password --region "${region}" | docker login --username AWS --password-stdin "${registry}"
+}
+retry login_ecr
+retry docker pull "${image_uri}"
+
+# --- Run the app ---------------------------------------------------------------
+# --stop-timeout lets the app drain in-flight requests on SIGTERM.
+docker run -d \
+  --name checkout \
+  --restart unless-stopped \
+  --stop-timeout 30 \
+  --memory ${container_memory_mb}m \
+  -p ${app_port}:3000 \
+  --log-driver awslogs \
+  --log-opt awslogs-region="${region}" \
+  --log-opt awslogs-group="${log_group}" \
+  --log-opt awslogs-stream="$INSTANCE_ID" \
+  -e NODE_ENV=production \
+  -e PORT=3000 \
+  -e APP_VERSION="${image_tag}" \
+  -e AWS_REGION="${region}" \
+  -e DB_HOST="${db_host}" \
+  -e DB_PORT="${db_port}" \
+  -e DB_NAME="${db_name}" \
+  -e DB_USER="${db_user}" \
+  -e DB_SECRET_ARN="${db_secret_arn}" \
+  -e DB_SSL=true \
+  -e DB_SSL_CA_PATH=/app/rds-global-bundle.pem \
+  -e DB_POOL_MAX="${db_pool_max}" \
+  -e INSTANCE_METADATA_ENABLED=true \
+  -e MIGRATE_ON_START=true \
+  "${image_uri}"
+
+echo "[user-data] container started at $(date -Is)"
