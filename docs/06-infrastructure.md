@@ -83,6 +83,7 @@ Why two stacks:
 | AWS-0089 | No S3 server access logging | Extra bucket and cost. CloudTrail covers API activity. |
 | AWS-0176 | No RDS IAM authentication | Uses an RDS-managed, auto-rotated Secrets Manager password instead. |
 | AWS-0177 | RDS deletion protection off | Variable; off in dev only, so destroy is clean. |
+| AWS-0077 | RDS backup retention 1 day | The AWS Free plan rejects longer retention (`FreeTierRestrictionError`). `db_backup_retention_days` can be raised after upgrading to the paid plan. |
 | AWS-0133 | Performance Insights off | Not needed at this scale. |
 | AWS-0178 | No VPC Flow Logs | Extra CloudWatch ingestion cost. Listed as a production add-on. |
 
@@ -226,4 +227,12 @@ Docker Desktop pushes each build as an **OCI image index** tagged with the git S
 
 ### Starting capacity
 `asg_desired_capacity` defaults to **1** (min 1, max 2), so load tests show the Auto Scaling group scaling out from 1 to 2 instances.
+
+### Free plan RDS limits (found during the first dev apply)
+The first `terraform apply` of the dev stack created 39 of 45 resources and then failed: `CreateDBInstance` was rejected with **FreeTierRestrictionError: backup retention period exceeds the maximum available to free tier customers**. The Free plan allows **1 day**. Fixes:
+
+- `envs/dev`: new `db_backup_retention_days` variable, default **1**, passed to the database module. The module default (7) is unchanged.
+- `modules/database`: `rds.force_ssl` now declares `apply_method = "pending-reboot"`, the value AWS stores. Without it, every plan showed an in-place change to the parameter group.
+
+Point-in-time recovery is limited to the last 24 hours. That's acceptable for a dev stack that is destroyed after each session.
 

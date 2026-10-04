@@ -151,6 +151,14 @@ variable "db_multi_az" {
   default = false
 }
 
+variable "db_backup_retention_days" {
+  # The AWS Free plan rejects longer retention (FreeTierRestrictionError);
+  # raise it (up to 35) after upgrading to the paid plan.
+  description = "RDS automated backup retention in days."
+  type        = number
+  default     = 1
+}
+
 variable "log_retention_days" {
   type    = number
   default = 7

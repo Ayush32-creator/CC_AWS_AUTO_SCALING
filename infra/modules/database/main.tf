@@ -17,9 +17,12 @@ resource "aws_db_parameter_group" "this" {
   description = "PostgreSQL 16 settings for ${var.name}"
 
   # Refuse any non-TLS connection (encryption in transit).
+  # AWS records this parameter as "pending-reboot"; declaring it avoids a
+  # perpetual diff. A new instance applies its parameter group at creation.
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   # Log statements slower than 500 ms - useful during load testing.
@@ -35,10 +38,12 @@ resource "aws_db_parameter_group" "this" {
 
 # Accepted: auth uses an RDS-managed Secrets Manager password (not IAM DB auth);
 # deletion protection is a variable (off in dev for clean teardown);
-# Performance Insights is not needed at this scale.
+# Performance Insights is not needed at this scale; backup retention is a
+# variable and the dev stack uses 1 day, the AWS Free plan maximum.
 #trivy:ignore:AVD-AWS-0176
 #trivy:ignore:AVD-AWS-0177
 #trivy:ignore:AVD-AWS-0133
+#trivy:ignore:AVD-AWS-0077
 resource "aws_db_instance" "this" {
   identifier     = "${var.name}-postgres"
   engine         = "postgres"

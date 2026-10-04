@@ -44,12 +44,13 @@ module "monitoring" {
 module "database" {
   source = "../../modules/database"
 
-  name               = local.name
-  subnet_ids         = module.network.db_subnet_ids
-  security_group_id  = module.security.db_sg_id
-  instance_class     = var.db_instance_class
-  multi_az           = var.db_multi_az
-  log_retention_days = var.log_retention_days
+  name                  = local.name
+  subnet_ids            = module.network.db_subnet_ids
+  security_group_id     = module.security.db_sg_id
+  instance_class        = var.db_instance_class
+  multi_az              = var.db_multi_az
+  backup_retention_days = var.db_backup_retention_days
+  log_retention_days    = var.log_retention_days
 }
 
 module "alb" {
