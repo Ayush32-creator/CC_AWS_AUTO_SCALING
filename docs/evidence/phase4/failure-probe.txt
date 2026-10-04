@@ -1,0 +1,241 @@
+15:15:22 {"instanceId":"i-0c9782ca1311fddb7","availabilityZone":"ap-southeast-2a","version":"8bc96ee"} 200
+15:15:25 {"instanceId":"i-0c9782ca1311fddb7","availabilityZone":"ap-southeast-2a","version":"8bc96ee"} 200
+15:15:28 {"instanceId":"i-0c9782ca1311fddb7","availabilityZone":"ap-southeast-2a","version":"8bc96ee"} 200
+15:15:31 {"instanceId":"i-0c9782ca1311fddb7","availabilityZone":"ap-southeast-2a","version":"8bc96ee"} 200
+15:15:34 {"instanceId":"i-0c9782ca1311fddb7","availabilityZone":"ap-southeast-2a","version":"8bc96ee"} 200
+15:15:38 <html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+</body>
+</html>
+ 503
+15:15:41 <html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+</body>
+</html>
+ 503
+15:15:44 <html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+</body>
+</html>
+ 503
+15:15:47 <html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+</body>
+</html>
+ 503
+15:15:50 <html>
+<head><title>503 Service Temporarily Unavailable</title></head>
+<body>
+<center><h1>503 Service Temporarily Unavailable</h1></center>
+</body>
+</html>
+ 503
+15:15:56 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:15:59 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:03 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:06 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:09 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:12 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:15 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:18 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:21 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:24 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:27 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:31 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:34 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:37 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:40 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:43 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:46 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:49 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:52 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:55 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:16:58 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:01 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:04 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:08 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:11 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:14 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:17 <html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+</body>
+</html>
+ 502
+15:17:20 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:23 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:26 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:29 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:32 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:35 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:38 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:41 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:45 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:48 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:51 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200
+15:17:54 {"instanceId":"i-07ca510c699761eee","availabilityZone":"ap-southeast-2b","version":"8bc96ee"} 200

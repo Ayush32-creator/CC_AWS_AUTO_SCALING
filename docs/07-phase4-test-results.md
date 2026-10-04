@@ -130,7 +130,7 @@ k6 reported **109 failed requests (2.5 %)**, so its `http_req_failed < 1 %` thre
 - occurred in **one 13-second window** (09:20:18–09:20:31 UTC = 14:50:18–14:50:31 IST);
 - have the error `lookup cc-checkout-dev-alb-….elb.amazonaws.com on 192.168.65.7:53: no such host`. 192.168.65.7 is **Docker Desktop's internal DNS resolver** on the test laptop.
 
-The requests never left the test machine. The ALB recorded **no** errors in that minute (`HTTPCode_ELB_5XX_Count` and `HTTPCode_Target_5XX_Count` both 0), so these are **not application or AWS failures**. Excluding them, the client-observed success rate was 100 %. Evidence: [`k6-output.log`](evidence/phase4/k6-output.log).
+The requests never left the test machine. The ALB recorded **no** errors in that minute (`HTTPCode_ELB_5XX_Count` and `HTTPCode_Target_5XX_Count` both 0), so these are **not application or AWS failures**. Excluding them, the client-observed success rate was 100 %. Evidence: [`k6-output.txt`](evidence/phase4/k6-output.txt).
 
 ## 8. State after testing
 
@@ -149,6 +149,6 @@ The requests never left the test machine. The ALB recorded **no** errors in that
 | File | Content |
 |---|---|
 | [`evidence/phase4/k6-summary.json`](evidence/phase4/k6-summary.json) | k6 summary export (request counts, latency percentiles, checks) |
-| [`evidence/phase4/k6-output.log`](evidence/phase4/k6-output.log) | k6 console output, including the 109 client-side DNS failures |
-| [`evidence/phase4/asg-watch.log`](evidence/phase4/asg-watch.log) | 30-second samples of ASG desired/instances, target health, req/min, req/target, CPU, alarm state |
-| [`evidence/phase4/failure-probe.log`](evidence/phase4/failure-probe.log) | 2-second probe of `/api/instance` during the instance-failure test |
+| [`evidence/phase4/k6-output.txt`](evidence/phase4/k6-output.txt) | k6 console output, including the 109 client-side DNS failures |
+| [`evidence/phase4/asg-watch.txt`](evidence/phase4/asg-watch.txt) | 30-second samples of ASG desired/instances, target health, req/min, req/target, CPU, alarm state |
+| [`evidence/phase4/failure-probe.txt`](evidence/phase4/failure-probe.txt) | 2-second probe of `/api/instance` during the instance-failure test |
