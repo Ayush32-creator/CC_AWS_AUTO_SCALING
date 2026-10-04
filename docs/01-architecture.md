@@ -36,7 +36,7 @@ flowchart LR
     ec2a & ec2b -->|:5432 TLS| rds
     ec2a & ec2b -.->|pull image via NAT| ecr
     ec2a & ec2b -.->|GetSecretValue| sm
-    ec2a & ec2b -.->|awslogs driver / EMF| cw
+    ec2a & ec2b -.->|awslogs driver, metric filters| cw
     alb -.->|metrics| cw
     alb -.->|access logs| s3
     cw -.->|target tracking| asg
@@ -111,8 +111,8 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 - **Logs:** Docker `awslogs` driver → log group `/checkout/app` (7-day retention). Request logs are JSON (method, path, status, latency, instance-id, request-id).
 - **Custom metrics:** every checkout writes a structured log event (`{"event":"checkout","outcome":"paid|declined|replayed","latencyMs":…}`). Phase 5 turns these into `OrdersPlaced`, `OrdersFailed` and `CheckoutLatency` with **CloudWatch Logs metric filters**. No SDK calls or extra IAM are needed.
   *(Changed in Phase 2: the original plan said Embedded Metric Format. EMF is only extracted when the log shipper sends the `x-amzn-logs-format: json/emf` header, and Docker's `awslogs` driver does not send it.)*
-- **Dashboard** (Terraform): ASG in-service instances, ALB RequestCount / TargetResponseTime p95 / 5xx / HealthyHostCount, EC2 CPU, RDS CPU and connections, OrdersPlaced.
-- **Alarms:** ALB 5xx rate, UnHealthyHostCount > 0, p95 latency > 1 s, RDS CPU > 80%. Optional SNS email notification.
+- **Dashboard** (Terraform, `cc-checkout-dev`): ASG in-service/desired, ALB requests and requests per target, target health, TargetResponseTime p50/p95, 5xx/4xx, EC2 CPU, RDS CPU/connections/free storage, OrdersPlaced/OrdersFailed, CheckoutLatency p50/p95, AppErrors, and an alarm overview.
+- **Alarms:** ALB 5xx rate > 5% (only when ≥ 10 req/min), **HealthyHostCount < 1** for 2 min, p95 latency > 1 s, RDS CPU > 80%. Optional SNS email (`alarm_email`). *(Changed in Phase 5: the plan said UnHealthyHostCount > 0, but a new instance is unhealthy for ~2 min during every scale-out (docs/07 §3), so that alarm would fire on normal scaling. "No healthy target" is the real outage signal.)*
 - **Footer badge:** the SPA shows "served by `i-0abc…` (us-east-1a)" via `GET /api/instance`, so load balancing and scaling are visible during the demo.
 
 ## 6. Availability & SLA view

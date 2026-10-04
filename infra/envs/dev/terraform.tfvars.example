@@ -12,3 +12,4 @@ artifacts_bucket_name = "cc-checkout-artifacts-<ACCOUNT_ID>"
 # asg_max_size         = 2               # vCPU quota 5 allows 2 x t3.micro; raise after a quota increase
 # target_requests_per_instance_per_minute = 300
 # target_cpu_percent   = 60
+# alarm_email          = "you@example.com"   # CloudWatch alarm emails via SNS (confirm the subscription)

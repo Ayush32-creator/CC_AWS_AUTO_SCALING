@@ -253,3 +253,27 @@ After the Free plan fix, the remaining 6 resources applied cleanly. Terraform st
 | SSM | instance **Online** (Session Manager available, no SSH) |
 | App via ALB | `/api/health` 200; `/api/health/ready` 200 `database: ok` (TLS to RDS); `/api/instance` reports version **8bc96ee**; SPA and products load; checkout returns 201 `PAID`; same Idempotency-Key replays the same order (200, `Idempotent-Replayed: true`) and stock is reduced only once |
 
+## 8. Phase 5, increment 1: CloudWatch observability
+
+All observability is in `modules/monitoring`. The module now receives the ALB, target group, ASG and RDS identifiers from `envs/dev`. There are no app changes and no redeploy: the app already writes one JSON log line per checkout.
+
+| Resource | Details |
+|---|---|
+| 4 log metric filters on `/cc-checkout/dev/app` → namespace `cc-checkout/dev` | `OrdersPlaced` (`outcome = paid`), `OrdersFailed` (`outcome = declined`), `CheckoutLatency` (`latencyMs` of paid + declined; replays excluded; no default value so percentiles stay honest), `AppErrors` (`level >= 50`) |
+| Alarm `cc-checkout-dev-alb-5xx-rate` | (ELB 5xx + target 5xx) / requests > 5% in 3 of 5 min. Metric math ignores minutes with < 10 requests, so one error at idle does not alarm |
+| Alarm `cc-checkout-dev-no-healthy-targets` | `HealthyHostCount` < 1 for 2 consecutive minutes, which is a real outage. Not `UnHealthyHostCount > 0`: scale-out instances are unhealthy while they boot |
+| Alarm `cc-checkout-dev-p95-latency` | p95 `TargetResponseTime` > 1 s in 3 of 5 min |
+| Alarm `cc-checkout-dev-rds-cpu` | RDS CPU average > 80% for 15 min |
+| Dashboard `cc-checkout-dev` | 12 graphs (scaling, traffic, health, latency, errors, EC2/RDS, orders, checkout latency, app errors) + alarm overview |
+| SNS topic + email subscription | **Only if `alarm_email` is set** (default `null`). AWS sends a confirmation link. The topic is not encrypted: CloudWatch alarms cannot publish to a topic encrypted with the AWS-managed `aws/sns` key, and a CMK costs $1/month (Trivy AWS-0095/0136 accepted) |
+
+All alarms use `treat_missing_data = notBreaching`, so an idle stack (no traffic, see docs/07 §4) never alarms. The four target-tracking alarms stay owned by the ASG policies.
+
+**Verification before apply:**
+- `terraform test` in `modules/monitoring`: 6/6 (filters, thresholds, SNS on/off, email validation, dashboard content).
+- `envs/dev` 7/7, TFLint 0 issues, Trivy 138/0.
+- The filter patterns were checked with `aws logs test-metric-filter` against real checkout log lines from the dev stack: OrdersPlaced matched the 3 paid orders, the 2 replays were excluded, and AppErrors matched nothing.
+- Real plan: **9 to add, 0 to change, 0 to destroy**.
+
+**Cost:** within the CloudWatch free tier (10 custom metrics, 10 alarms, 3 dashboards per month). EC2 detailed monitoring also uses custom-metric allowance, so expect ≈ $0–0.30/month. Worst case without any free tier: ≈ $4.60/month.
+

@@ -163,3 +163,10 @@ variable "log_retention_days" {
   type    = number
   default = 7
 }
+
+# ---- Monitoring (Phase 5) ---------------------------------------------------------
+variable "alarm_email" {
+  description = "Email for CloudWatch alarm notifications (SNS; confirm the link AWS sends). null = no SNS topic, alarms visible in the console only."
+  type        = string
+  default     = null
+}

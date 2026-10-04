@@ -16,6 +16,7 @@ Default configuration: `enable_nat_gateway = false` (see docs/06 §6).
 | RDS gp3 storage 20 GB (+ backups ≤ 20 GB, free) | 20 GB | $0.138/GB-month | $0.004 |
 | Secrets Manager (RDS-managed secret) | 1 | $0.40/month + $0.05/10k calls | < $0.001 |
 | CloudWatch (detailed monitoring, ASG group metrics, logs at $0.67/GB) | — | $0.30/metric-month, pro-rated | ~$0.01 |
+| CloudWatch Phase 5: 4 log-derived metrics, 4 alarms, 1 dashboard | — | Free tier: 10 metrics, 10 alarms, 3 dashboards; otherwise $0.30/metric, $0.10/alarm, $3/dashboard per month | ≈ $0 (worst case ≈ $4.60/month) |
 | S3 gateway endpoint | 1 | free | $0 |
 | **Total, baseline (1 instance, `asg_desired_capacity = 1`)** | | | **≈ $0.10/h** |
 | Total at max scale (2 instances; `asg_max_size = 2` because of the 5-vCPU quota) | | | ≈ $0.12/h |

@@ -38,7 +38,14 @@ module "monitoring" {
 
   project            = var.project
   environment        = var.environment
+  region             = var.region
   log_retention_days = var.log_retention_days
+
+  alb_arn_suffix          = module.alb.arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
+  asg_name                = module.compute.asg_name
+  db_instance_identifier  = module.database.identifier
+  alarm_email             = var.alarm_email
 }
 
 module "database" {

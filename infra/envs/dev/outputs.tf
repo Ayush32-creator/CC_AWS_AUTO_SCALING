@@ -12,6 +12,15 @@ output "app_log_group" {
   value = module.monitoring.app_log_group_name
 }
 
+output "dashboard_url" {
+  description = "CloudWatch dashboard for this environment."
+  value       = module.monitoring.dashboard_url
+}
+
+output "alarm_names" {
+  value = module.monitoring.alarm_names
+}
+
 output "db_endpoint" {
   description = "Private RDS endpoint (reachable only from the app tier)."
   value       = "${module.database.address}:${module.database.port}"

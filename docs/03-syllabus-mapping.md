@@ -17,7 +17,7 @@
 | | Block storage (EBS) | gp3 root volumes on EC2, RDS gp3 storage | — |
 | | Persistence & consistency | Orders survive instance termination; unique-constraint idempotency | Failure test: kill instance mid-load, count orders |
 | | NoSQL | **Deliberately excluded.** Explained in report (relational, transactional data) | Design justification |
-| **V — Service Management** | Monitoring | CloudWatch dashboard, alarms, EMF custom metrics | Dashboard screenshots |
+| **V — Service Management** | Monitoring | CloudWatch dashboard, alarms, custom metrics from log metric filters (OrdersPlaced, OrdersFailed, CheckoutLatency, AppErrors) | Dashboard screenshots |
 | | Logging | Centralized JSON logs in CloudWatch Logs; Logs Insights queries | Query examples |
 | | Availability & SLA | Multi-AZ app tier, health checks, composite SLA calculation, SLOs | SLA section + test results |
 | | Cost management | Cost estimate, AWS Budget alert, destroy-after-session workflow, NAT toggle | `04-cost-estimate.md` |
