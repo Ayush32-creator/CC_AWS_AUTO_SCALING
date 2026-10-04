@@ -37,6 +37,12 @@ COPY --from=frontend /build/frontend/dist ./public
 # (Placed directly in /app: ADD --chmod also applies to any directory it creates.)
 ADD --chmod=644 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /app/rds-global-bundle.pem
 
+# The runtime only executes `node src/server.js`. Remove the package managers
+# bundled with the base image (npm/npx, corepack, yarn): they are never used
+# here, and their own dependencies carried the HIGH CVEs Trivy reported in CI.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
+
 # Run as the unprivileged "node" user that ships with the base image.
 USER node
 EXPOSE 3000
