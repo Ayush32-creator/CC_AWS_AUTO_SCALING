@@ -14,6 +14,7 @@ A cloud computing course project: a React + Node.js checkout application deploye
 | [docs/06-infrastructure.md](docs/06-infrastructure.md) | Terraform stacks and modules, validation results, AWS prerequisites, deploy runbook |
 | [docs/07-phase4-test-results.md](docs/07-phase4-test-results.md) | Phase 4 test results: checkout, idempotency, scale-out/in, instance failure, monitoring |
 | [docs/08-security-review.md](docs/08-security-review.md) | Security review and hardening: IAM, network, EC2, RDS, secrets, container |
+| [docs/09-ci-cd.md](docs/09-ci-cd.md) | CI (GitHub Actions), deployment script, rollback, why there is no GitHub OIDC |
 | [loadtest/](loadtest/README.md) | k6 load-test scripts and how to run them |
 
 ## Repository layout

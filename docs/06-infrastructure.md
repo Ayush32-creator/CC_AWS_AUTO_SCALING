@@ -170,7 +170,7 @@ Note on `docker build` on Windows: the image is built for `linux/amd64`, which m
 | No NAT Gateway by default (§7) | Instances have public IPs; `app-sg` admits only the ALB. With `enable_nat_gateway = true` there is a single NAT (~$0.059/h): if AZ-a fails, instances in AZ-b lose egress, but serving traffic is unaffected. Production would use private subnets with one NAT per AZ, or VPC interface endpoints. |
 | No VPC Flow Logs, WAF or GuardDuty | Extra cost. Mentioned in the security section of the report. |
 | Bootstrap state is a local file | Back up `infra/bootstrap/terraform.tfstate`. It is small and can be recreated with `terraform import` if lost. |
-| GitHub OIDC role for CI/CD | Phase 5, together with the workflows. |
+| GitHub OIDC role for CI/CD | **Not possible in this AWS project**: its managed SCP denies `iam:*Provider*`. CI runs without AWS access, and CD is `scripts/deploy.sh` (docs/09). |
 
 ## 7. Phase 4 changes: AWS project and Region
 

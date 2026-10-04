@@ -133,14 +133,14 @@ Composite (serial) ≈ 0.9999 × 0.9999 × 0.995 ≈ **99.48%**. The database is
 ## 7. CI/CD (Unit V — DevOps)
 
 - **CI** (every push/PR): lint, unit tests, integration tests against a Postgres service container, Docker build, `terraform fmt -check`, `terraform validate`.
-- **CD** (manual `workflow_dispatch` only): build → push to ECR → start ASG instance refresh. GitHub authenticates to AWS with **OIDC** (no long-lived access keys).
+- **CD**: `scripts/deploy.sh`, run by the operator with a short-lived `aws login` session. It builds and pushes the SHA-tagged image, applies only the image change through Terraform (guarded), waits for the rolling refresh and verifies the new version. *(Changed in Phase 5: GitHub OIDC was planned, but the AWS project's managed policy denies creating IAM OIDC providers, so CI has no AWS access at all. See docs/09-ci-cd.md.)*
 - `terraform apply` / `destroy` stay **manual and local** so you control spend.
 
 ## 8. Terraform layout
 
 Two stacks separate cheap persistent resources from hourly-billed ones:
 
-- **`infra/bootstrap/`** (apply once, keep; pennies/month): S3 state bucket (versioned, encrypted, native S3 lockfile), ECR repo with a lifecycle policy (keep the last 5 tagged releases; untagged leftovers removed), GitHub OIDC role, AWS Budget alert ($10).
+- **`infra/bootstrap/`** (apply once, keep; pennies/month): S3 state bucket (versioned, encrypted, native S3 lockfile), ECR repo with a lifecycle policy (keep the last 5 tagged releases; untagged leftovers removed), AWS Budget alert ($10). (The planned GitHub OIDC role is not possible in this AWS project; see docs/09.)
 - **`infra/envs/dev/`** (apply for a session, destroy afterwards): composes modules `network`, `security`, `database`, `alb`, `compute`, `monitoring`.
 
 Everything is driven by variables (region, CIDRs, instance type, ASG sizes, scaling targets, image tag), and outputs include the ALB URL, ASG name and dashboard URL.

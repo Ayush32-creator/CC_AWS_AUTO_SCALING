@@ -1,0 +1,213 @@
+# Continuous integration for the checkout system (docs/09-ci-cd.md).
+#
+# Runs on every pull request to main and every push to main. It has NO AWS
+# access: no credentials, no OIDC, no deployment. Deployment is a separate,
+# operator-run step (scripts/deploy.sh) because the AWS project's managed
+# policy forbids creating the IAM OIDC provider GitHub Actions would need.
+#
+# Third-party actions are pinned to full commit SHAs (tag in the comment).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege for the GITHUB_TOKEN: read the repository, nothing else.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "22"
+  TERRAFORM_VERSION: "1.16.4"
+  TFLINT_IMAGE: ghcr.io/terraform-linters/tflint:v0.64.0
+  TRIVY_IMAGE: aquasec/trivy:0.75.0
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      # Throwaway database for the integration tests; exists only for this job.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: checkout
+          POSTGRES_PASSWORD: ci-only-not-a-secret
+          POSTGRES_DB: checkout_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U checkout -d checkout_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_DATABASE_URL: postgres://checkout:ci-only-not-a-secret@localhost:5432/checkout_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests (real PostgreSQL)
+        run: npm run test:integration
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  frontend:
+    name: Frontend tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  terraform:
+    name: Terraform validate, test, lint, scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: infra
+    env:
+      TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.terraform-plugin-cache
+      TF_IN_AUTOMATION: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+      - name: Cache Terraform providers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: tf-providers-${{ runner.os }}-${{ hashFiles('infra/**/.terraform.lock.hcl') }}
+      - run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform validate (root stacks, no backend, no AWS calls)
+        run: |
+          for dir in bootstrap envs/dev; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+      - name: terraform test (mock AWS provider, no AWS calls)
+        run: |
+          for dir in envs/dev modules/compute modules/monitoring modules/network modules/security; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" test
+            echo "::endgroup::"
+          done
+      - name: TFLint
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # read-only; avoids rate limits downloading the AWS ruleset
+        run: |
+          docker run --rm -v "$PWD:/data" -w /data -e GITHUB_TOKEN -e TFLINT_PLUGIN_DIR=/data/.tflint.d "$TFLINT_IMAGE" --init
+          docker run --rm -v "$PWD:/data" -w /data -e TFLINT_PLUGIN_DIR=/data/.tflint.d "$TFLINT_IMAGE" --recursive --config /data/.tflint.hcl
+      - name: Trivy IaC misconfiguration scan
+        run: docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" config --exit-code 1 --skip-dirs "**/.terraform" /src
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Trivy secret scan (all tracked files)
+        run: docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" fs --scanners secret --exit-code 1 --skip-dirs /src/.git /src
+
+  image:
+    name: Build and scan container image
+    needs: [backend, frontend, terraform, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Image tag (short git SHA, same scheme as scripts/deploy.sh)
+        id: tag
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build production image (linux/amd64, not pushed)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          tags: cc-checkout:${{ steps.tag.outputs.tag }}
+          labels: org.opencontainers.image.revision=${{ github.sha }}
+          load: true
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Image must run as non-root
+        run: |
+          user=$(docker image inspect "cc-checkout:${{ steps.tag.outputs.tag }}" --format '{{.Config.User}}')
+          echo "image user: $user"
+          test "$user" = "node"
+      - name: Trivy image scan (HIGH/CRITICAL with a fix available, plus secrets)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" image \
+            --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            "cc-checkout:${{ steps.tag.outputs.tag }}"
+      - name: Smoke test with the production hardening flags
+        run: |
+          # Same container flags as the EC2 user-data (infra/modules/compute).
+          # No database here: /api/health, the SPA and the read-only root are checked.
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 --memory 512m \
+            --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 256 \
+            -e MIGRATE_ON_START=false -e PENDING_ORDER_REAPER_ENABLED=false \
+            -e DB_HOST=127.0.0.1 -e DB_NAME=none -e DB_USER=none -e DB_PASSWORD=none \
+            "cc-checkout:${{ steps.tag.outputs.tag }}"
+          for _ in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && break; sleep 1; done
+          curl -fsS -o /dev/null http://127.0.0.1:3000/
+          docker exec smoke sh -c 'touch /app/probe' && { echo "root filesystem is writable"; exit 1; } || echo "root filesystem is read-only"
+          docker exec smoke sh -c 'grep -Eq "^CapEff:[[:space:]]+0000000000000000" /proc/1/status' && echo "no capabilities"
+          docker rm -f smoke
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Container image"
+            echo "- Tag: \`cc-checkout:${{ steps.tag.outputs.tag }}\` (built, scanned and smoke-tested; **not pushed**)"
+            echo "- Deploy from a checkout of this commit with: \`scripts/deploy.sh\` (docs/09-ci-cd.md)"
+          } >> "$GITHUB_STEP_SUMMARY"
