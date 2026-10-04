@@ -288,3 +288,21 @@ Applied with `alarm_email` unset (no SNS): **9 added, 0 changed, 0 destroyed**. 
 | Test checkout | Order `59e51dec-…` 201 `PAID`. Within ~30 s: `OrdersPlaced` = 1, `OrdersFailed` = 0, `AppErrors` = 0, `CheckoutLatency` = 1 sample of **310 ms**, identical to `latencyMs: 310` in the app's log line |
 | Tests / lint / security | monitoring 6/6, dev 7/7, `terraform fmt` clean, TFLint 0 issues, Trivy 138/0 |
 
+## 9. Phase 5, increment 2: pending-order reaper (deployed 2026-10-04)
+
+App-only change (design: docs/02 "Stale PENDING orders"). **No new AWS resources.** Deployed through the normal Terraform path: `image_tag = "a0cbc11"` in `envs/dev/terraform.tfvars` → new launch-template version → ASG rolling instance refresh.
+
+| Step | Result |
+|---|---|
+| Image | `cc-checkout:a0cbc11` (digest `sha256:e673d052…`), pushed next to `8bc96ee` (kept for rollback; lifecycle keeps 5 tagged releases) |
+| Local check before push | Image run against the local Postgres: migration `003_pending_order_expiry.sql` applied to a populated DB, `/api/health/ready` ok, reaper started |
+| Plan | **0 add, 2 change, 0 destroy**. The decoded user-data diff was only the image tag (pull URI and `APP_VERSION`); ASG stayed 1/1/2 |
+| Instance refresh | 17:54:19 → 17:58:45 UTC (**4 m 26 s**), Successful. `i-07ca510c699761eee` (`8bc96ee`) replaced by **`i-0dca1c1ad25992656`** (`a0cbc11`, ap-southeast-2a) |
+| Availability during deploy | A probe every ~3 s returned **200 on every request** (~70 probes). The replacement served traffic before the old instance was removed, so there was **no downtime** |
+| After deploy | Target healthy; SSM Online; `/api/health` ok; `/api/health/ready` `database: ok`; CloudWatch shows `Applied migration 003`, `Checkout API listening`, `Pending-order reaper started` (timeout 600 s, interval 60 s, batch 100) |
+| Checkout via ALB | 201 `PAID` (`24ab2960-…`), `statusReason: null`; replay 200 with the same order; stock 35 → 34. The 4 earlier PAID orders are unchanged |
+| Metrics | `OrdersPlaced` 1 and `CheckoutLatency` 219 ms (= the log's `latencyMs`), `AppErrors` 0 throughout the deploy. All 4 alarms OK |
+| Terraform | Follow-up `plan`: **no changes**; `terraform test` (dev) 7/7 |
+
+Tests: backend 77 (30 unit + 47 integration, of which 22 new), frontend 11. The concurrency suite passed 5 repeated runs.
+
