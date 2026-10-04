@@ -73,6 +73,8 @@ if image_in_ecr "$TAG"; then
   log "Image $REPO_NAME:$TAG is already in ECR (tags are immutable): skipping build"
 elif $ROLLBACK; then
   fail "rollback image $TAG is not in ECR"
+elif $PLAN_ONLY; then
+  log "Plan only: $REPO_NAME:$TAG is not in ECR yet; skipping build and push"
 else
   log "Build $IMAGE_REPO:$TAG (linux/amd64)"
   docker build --platform linux/amd64 -f "$ROOT/backend/Dockerfile" \
@@ -90,18 +92,18 @@ fi
 
 # ---------------------------------------------------------------------------
 log "Terraform plan (image_tag $CURRENT_TAG -> $TAG)"
+# Plan file relative to TF_DIR (git-ignored *.tfplan): Terraform and Python
+# may be native Windows programs that cannot see Git Bash's /tmp.
+PLAN=.deploy.tfplan
 cp "$TFVARS" "$TFVARS.bak"
-restore_tfvars() { [ -f "$TFVARS.bak" ] && mv "$TFVARS.bak" "$TFVARS"; }
-trap restore_tfvars EXIT    # keep the old tag unless the apply succeeds
+cleanup() { rm -f "$TF_DIR/$PLAN"; if [ -f "$TFVARS.bak" ]; then mv "$TFVARS.bak" "$TFVARS"; fi; }
+trap cleanup EXIT    # keep the old tag unless the apply succeeds
 sed -i -E "s/^(image_tag[[:space:]]*=[[:space:]]*)\"[^\"]+\"/\1\"$TAG\"/" "$TFVARS"
 
-PLAN=$(mktemp -t deployplan.XXXXXX)
 terraform -chdir="$TF_DIR" plan -input=false -no-color -out="$PLAN" >/dev/null
-terraform -chdir="$TF_DIR" show -json "$PLAN" > "$PLAN.json"
-set +e
-"$PY" - "$PLAN.json" <<'PYEOF'
+GUARD_PY=$(cat <<'PYEOF'
 import json, sys
-plan = json.load(open(sys.argv[1], encoding="utf-8"))
+plan = json.load(sys.stdin)
 # The only changes a deployment may make (in-place updates):
 allowed = {"aws_launch_template": {"user_data"}, "aws_autoscaling_group": {"launch_template"}}
 changes, bad = [], []
@@ -124,9 +126,11 @@ if bad:
     sys.exit(3)
 sys.exit(0 if changes else 4)
 PYEOF
+)
+set +e
+terraform -chdir="$TF_DIR" show -json "$PLAN" | "$PY" -c "$GUARD_PY"
 guard=$?
 set -e
-rm -f "$PLAN.json"
 case $guard in
   0) ;;
   4) echo "Image $TAG is already deployed. Nothing to do."; exit 0 ;;
@@ -147,7 +151,7 @@ fi
 log "Apply"
 START=$(date +%s)
 terraform -chdir="$TF_DIR" apply -input=false -no-color "$PLAN" | grep -E "Modifications complete|Apply complete"
-rm -f "$PLAN" "$TFVARS.bak"   # applied: keep the new tag in terraform.tfvars
+rm -f "$TF_DIR/$PLAN" "$TFVARS.bak"   # applied: keep the new tag in terraform.tfvars
 trap - EXIT
 
 ASG=$(terraform -chdir="$TF_DIR" output -raw asg_name)

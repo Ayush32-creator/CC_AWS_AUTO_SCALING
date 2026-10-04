@@ -19,3 +19,4 @@ infra/modules/**/.terraform.lock.hcl
 
 # k6 run output (keep curated copies under docs/evidence/)
 loadtest/*.json
+*.tfplan
