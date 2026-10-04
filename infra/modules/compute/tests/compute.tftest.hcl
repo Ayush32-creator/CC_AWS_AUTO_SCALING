@@ -87,6 +87,26 @@ run "user_data_contains_no_secrets_and_correct_image" {
   }
 }
 
+run "container_runs_hardened" {
+  command = plan
+
+  assert {
+    condition = alltrue([for flag in [
+      "--read-only",
+      "--tmpfs /tmp:rw,noexec,nosuid,size=16m",
+      "--cap-drop ALL",
+      "--security-opt no-new-privileges",
+      "--pids-limit 256",
+    ] : strcontains(local.user_data, flag)])
+    error_message = "The app container must run read-only, without capabilities, without privilege escalation and with a PID limit."
+  }
+
+  assert {
+    condition     = !strcontains(local.user_data, "--privileged") && !strcontains(local.user_data, "--cap-add") && !strcontains(local.user_data, "-v /var/run/docker.sock")
+    error_message = "The app container must not be privileged, gain capabilities or mount the Docker socket."
+  }
+}
+
 run "asg_and_scaling" {
   command = plan
 
@@ -127,6 +147,18 @@ run "iam_policy_is_least_privilege" {
       for s in jsondecode(aws_iam_role_policy.app.policy).Statement : s.Resource if s.Sid == "ReadDatabaseSecret"
     ]) == "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234"
     error_message = "Secret access must be scoped to the single DB secret."
+  }
+
+  assert {
+    condition = one([
+      for s in jsondecode(aws_iam_role_policy.app.policy).Statement : s if s.Sid == "DenyParameterStoreReads"
+    ]).Effect == "Deny"
+    error_message = "Parameter Store reads granted by the SSM managed policy must be explicitly denied."
+  }
+
+  assert {
+    condition     = alltrue([for s in jsondecode(aws_iam_role_policy.app.policy).Statement : !contains(flatten([s.Action]), "*") && !anytrue([for a in flatten([s.Action]) : endswith(a, ":*")])])
+    error_message = "No statement may use wildcard actions."
   }
 }
 

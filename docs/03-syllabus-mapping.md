@@ -21,7 +21,7 @@
 | | Logging | Centralized JSON logs in CloudWatch Logs; Logs Insights queries | Query examples |
 | | Availability & SLA | Multi-AZ app tier, health checks, composite SLA calculation, SLOs | SLA section + test results |
 | | Cost management | Cost estimate, AWS Budget alert, destroy-after-session workflow, NAT toggle | `04-cost-estimate.md` |
-| | IAM & security | Least-privilege instance role, OIDC for CI, Secrets Manager, no SSH | IAM policy JSON |
+| | IAM & security | Least-privilege instance role (+ explicit Parameter Store deny), hardened container (read-only, no capabilities), Secrets Manager, no SSH, OIDC for CI | docs/08-security-review.md, IAM policy JSON |
 | | DevOps | GitHub Actions CI/CD, IaC, automated tests | Workflow runs |
 | **VI — Networking & Security** | VPC & subnets | 3-tier subnet design across 2 AZs | Network diagram |
 | | Public/private IPs, routing | Public subnets via IGW; private via NAT; DB tier with no internet route | Route table screenshots |

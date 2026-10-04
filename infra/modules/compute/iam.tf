@@ -3,6 +3,7 @@
 #   * read the ONE database secret
 #   * write to the ONE application log group
 #   * register with SSM Session Manager (shell access without SSH/port 22)
+# and are explicitly denied Parameter Store reads (see DenyParameterStoreReads).
 
 resource "aws_iam_role" "instance" {
   name        = "${var.name}-instance-role"
@@ -57,6 +58,22 @@ resource "aws_iam_role_policy" "app" {
         Effect   = "Allow"
         Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "${var.log_group_arn}:*"
+      },
+      # AmazonSSMManagedInstanceCore (needed for Session Manager) also allows
+      # ssm:GetParameter(s) on every Parameter Store parameter. The instance
+      # never reads parameters (the AMI is resolved by Terraform; the DB
+      # password comes from Secrets Manager), so take that away explicitly:
+      # a compromised container must not be able to read other parameters.
+      {
+        Sid    = "DenyParameterStoreReads"
+        Effect = "Deny"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",
+          "ssm:GetParameterHistory",
+        ]
+        Resource = "arn:aws:ssm:*:*:parameter/*"
       },
     ]
   })

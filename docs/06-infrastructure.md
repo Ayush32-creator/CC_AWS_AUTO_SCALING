@@ -306,3 +306,12 @@ App-only change (design: docs/02 "Stale PENDING orders"). **No new AWS resources
 
 Tests: backend 77 (30 unit + 47 integration, of which 22 new), frontend 11. The concurrency suite passed 5 repeated runs.
 
+## 10. Phase 5, increment 3: security and IAM hardening (deployed 2026-10-05)
+
+Full review: **docs/08-security-review.md**. Two changes, both in `modules/compute`, no new AWS resources:
+
+1. **IAM:** an explicit `Deny` of `ssm:GetParameter*` on Parameter Store in the instance role's inline policy. It overrides the broad read allowed by `AmazonSSMManagedInstanceCore`, which Session Manager needs but whose parameter-read part the instances do not.
+2. **Container:** the app container now runs with `--read-only`, a small `noexec` `/tmp` tmpfs, `--cap-drop ALL`, `no-new-privileges` and `--pids-limit 256`. The image already ran as the non-root `node` user.
+
+Plan **0 add / 3 change / 0 destroy**, rolled out by instance refresh in 4 m 26 s with **77/77 probes 200** (no downtime); new instance `i-0f728c5cdb3aa7aa2`, same image `a0cbc11`. Both changes were verified on the live instance through SSM Run Command (read-only). The follow-up plan shows no changes.
+

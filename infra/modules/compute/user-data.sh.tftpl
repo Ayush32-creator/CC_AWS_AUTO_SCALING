@@ -34,11 +34,21 @@ retry docker pull "${image_uri}"
 
 # --- Run the app ---------------------------------------------------------------
 # --stop-timeout lets the app drain in-flight requests on SIGTERM.
+# Hardening (the image already runs as the unprivileged "node" user):
+#   --read-only + --tmpfs /tmp   immutable filesystem; only a small scratch /tmp
+#   --cap-drop ALL               no Linux capabilities (port 3000 needs none)
+#   no-new-privileges            setuid binaries cannot raise privileges
+#   --pids-limit                 caps fork bombs / runaway processes
 docker run -d \
   --name checkout \
   --restart unless-stopped \
   --stop-timeout 30 \
   --memory ${container_memory_mb}m \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --pids-limit 256 \
   -p ${app_port}:3000 \
   --log-driver awslogs \
   --log-opt awslogs-region="${region}" \
