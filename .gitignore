@@ -16,3 +16,6 @@ infra/**/backend.hcl
 infra/.tflint.d/
 # Lock files are committed only for root stacks (bootstrap, envs/dev)
 infra/modules/**/.terraform.lock.hcl
+
+# k6 run output (keep curated copies under docs/evidence/)
+loadtest/*.json

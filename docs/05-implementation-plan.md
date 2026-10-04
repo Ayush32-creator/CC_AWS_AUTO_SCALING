@@ -33,7 +33,7 @@ CC_CP/
 | 1 Planning | ✅ Approved |
 | 2 Application | ✅ Approved |
 | 3 Docker + IaC | ✅ Complete |
-| 4 Deploy + scaling | 🟡 In progress: bootstrap and dev stack deployed 2026-10-04 and verified; scaling tests next |
+| 4 Deploy + scaling | ✅ Complete: deployed 2026-10-04; all 6 application/scaling/recovery tests passed (docs/07) |
 | 5–6 | Not started |
 
 Decisions: region **ap-southeast-2 (Sydney)**, the Region assigned to the AWS project (changed from ap-south-1 in Phase 4). Git is initialised with one commit per phase and no remote push.

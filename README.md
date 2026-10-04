@@ -12,6 +12,8 @@ A cloud computing course project: a React + Node.js checkout application deploye
 | [docs/04-cost-estimate.md](docs/04-cost-estimate.md) | Hourly/monthly costs and guardrails |
 | [docs/05-implementation-plan.md](docs/05-implementation-plan.md) | Repository layout, phase plan, prerequisites |
 | [docs/06-infrastructure.md](docs/06-infrastructure.md) | Terraform stacks and modules, validation results, AWS prerequisites, deploy runbook |
+| [docs/07-phase4-test-results.md](docs/07-phase4-test-results.md) | Phase 4 test results: checkout, idempotency, scale-out/in, instance failure, monitoring |
+| [loadtest/](loadtest/README.md) | k6 load-test scripts and how to run them |
 
 ## Repository layout
 
