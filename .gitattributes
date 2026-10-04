@@ -1,4 +1,5 @@
-# Keep LF everywhere: shell scripts, Dockerfiles and EC2 user-data break with CRLF.
-* text=auto eol=lf
-*.png binary
-*.jpg binary
+# Shell scripts and GitHub workflows must keep LF line endings on every OS
+# (bash and YAML parsers reject CRLF).
+*.sh            text eol=lf
+*.tftpl         text eol=lf
+.github/**/*.yml text eol=lf

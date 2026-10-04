@@ -6,6 +6,7 @@
 #   scripts/deploy.sh --rollback 8bc96ee  # redeploy an image that is already in ECR
 #   scripts/deploy.sh --checkout-smoke    # also place one real test order after deploying
 #   scripts/deploy.sh --yes               # skip the confirmation prompt
+#   scripts/deploy.sh --plan-only         # build/push if needed, plan + guard, apply nothing
 #
 # Credentials: your own short-lived `aws login` session (profile cc-project).
 # No access keys are used or stored anywhere.
@@ -27,13 +28,14 @@ TF_DIR="$ROOT/infra/envs/dev"
 TFVARS="$TF_DIR/terraform.tfvars"
 REFRESH_TIMEOUT_S=1200
 
-TAG="" ROLLBACK=false ASSUME_YES=false CHECKOUT_SMOKE=false
+TAG="" ROLLBACK=false ASSUME_YES=false CHECKOUT_SMOKE=false PLAN_ONLY=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --rollback) ROLLBACK=true; TAG="${2:?--rollback needs an image tag}"; shift 2 ;;
     --yes|-y) ASSUME_YES=true; shift ;;
     --checkout-smoke) CHECKOUT_SMOKE=true; shift ;;
-    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
+    --plan-only) PLAN_ONLY=true; shift ;;
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -95,9 +97,12 @@ sed -i -E "s/^(image_tag[[:space:]]*=[[:space:]]*)\"[^\"]+\"/\1\"$TAG\"/" "$TFVA
 
 PLAN=$(mktemp -t deployplan.XXXXXX)
 terraform -chdir="$TF_DIR" plan -input=false -no-color -out="$PLAN" >/dev/null
-terraform -chdir="$TF_DIR" show -json "$PLAN" | "$PY" -c '
+terraform -chdir="$TF_DIR" show -json "$PLAN" > "$PLAN.json"
+set +e
+"$PY" - "$PLAN.json" <<'PYEOF'
 import json, sys
-plan = json.load(sys.stdin)
+plan = json.load(open(sys.argv[1], encoding="utf-8"))
+# The only changes a deployment may make (in-place updates):
 allowed = {"aws_launch_template": {"user_data"}, "aws_autoscaling_group": {"launch_template"}}
 changes, bad = [], []
 for rc in plan["resource_changes"]:
@@ -106,23 +111,32 @@ for rc in plan["resource_changes"]:
         continue
     before, after = rc["change"]["before"] or {}, rc["change"]["after"] or {}
     changed = sorted(k for k in after if before.get(k) != after.get(k))
-    changes.append(f"{rc[\"address\"]}: {actions} {changed}")
+    address = rc["address"]
+    changes.append(f"  {address}: {actions} {changed}")
     ok = actions == ["update"] and rc["type"] in allowed and set(changed) <= allowed[rc["type"]] | {"default_version", "latest_version"}
     if rc["type"] == "aws_autoscaling_group":
         ok = ok and (before.get("min_size"), before.get("max_size")) == (after.get("min_size"), after.get("max_size"))
     if not ok:
-        bad.append(rc["address"])
-print("\n".join(changes) or "no changes")
+        bad.append(address)
+print("\n".join(changes) or "  no changes")
 if bad:
-    print("REFUSING: plan changes more than the application image:", ", ".join(bad))
+    print("REFUSING: the plan changes more than the application image: " + ", ".join(bad))
     sys.exit(3)
-if not changes:
-    sys.exit(4)
-' || {
-  rc=$?
-  [ $rc -eq 4 ] && { echo "Image $TAG is already deployed. Nothing to do."; exit 0; }
-  fail "unexpected plan; nothing was applied"
-}
+sys.exit(0 if changes else 4)
+PYEOF
+guard=$?
+set -e
+rm -f "$PLAN.json"
+case $guard in
+  0) ;;
+  4) echo "Image $TAG is already deployed. Nothing to do."; exit 0 ;;
+  *) fail "unexpected plan; nothing was applied" ;;
+esac
+
+if $PLAN_ONLY; then
+  log "Plan only: guard passed, nothing applied (terraform.tfvars restored)"
+  exit 0
+fi
 
 if ! $ASSUME_YES; then
   read -r -p "Apply this deployment (rolling instance refresh)? [y/N] " answer
