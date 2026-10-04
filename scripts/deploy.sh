@@ -131,9 +131,10 @@ set +e
 terraform -chdir="$TF_DIR" show -json "$PLAN" | "$PY" -c "$GUARD_PY"
 guard=$?
 set -e
+ALREADY_DEPLOYED=false
 case $guard in
   0) ;;
-  4) echo "Image $TAG is already deployed. Nothing to do."; exit 0 ;;
+  4) ALREADY_DEPLOYED=true ;;
   *) fail "unexpected plan; nothing was applied" ;;
 esac
 
@@ -142,25 +143,35 @@ if $PLAN_ONLY; then
   exit 0
 fi
 
-if ! $ASSUME_YES; then
-  read -r -p "Apply this deployment (rolling instance refresh)? [y/N] " answer
-  [[ "$answer" =~ ^[Yy]$ ]] || fail "cancelled by operator"
+START=$(date +%s)
+if $ALREADY_DEPLOYED; then
+  # Nothing to apply: re-run the verification against the live deployment.
+  log "Image $TAG is already deployed: skipping apply, verifying the live deployment"
+  rm -f "$TF_DIR/$PLAN" "$TFVARS.bak"
+  trap - EXIT
+else
+  if ! $ASSUME_YES; then
+    read -r -p "Apply this deployment (rolling instance refresh)? [y/N] " answer
+    [[ "$answer" =~ ^[Yy]$ ]] || fail "cancelled by operator"
+  fi
+
+  # -------------------------------------------------------------------------
+  log "Apply"
+  terraform -chdir="$TF_DIR" apply -input=false -no-color "$PLAN" | grep -E "Modifications complete|Apply complete"
+  rm -f "$TF_DIR/$PLAN" "$TFVARS.bak"   # applied: keep the new tag in terraform.tfvars
+  trap - EXIT
 fi
 
-# ---------------------------------------------------------------------------
-log "Apply"
-START=$(date +%s)
-terraform -chdir="$TF_DIR" apply -input=false -no-color "$PLAN" | grep -E "Modifications complete|Apply complete"
-rm -f "$TF_DIR/$PLAN" "$TFVARS.bak"   # applied: keep the new tag in terraform.tfvars
-trap - EXIT
-
-ASG=$(terraform -chdir="$TF_DIR" output -raw asg_name)
-URL=$(terraform -chdir="$TF_DIR" output -raw app_url)
+# Native Windows tools (aws.exe, python.exe, terraform.exe) may end lines with
+# CRLF when piped; every value that is compared below has CR stripped.
+nocr() { tr -d '\r'; }
+ASG=$(terraform -chdir="$TF_DIR" output -raw asg_name | nocr)
+URL=$(terraform -chdir="$TF_DIR" output -raw app_url | nocr)
 
 log "Waiting for the rolling instance refresh"
 while :; do
   status=$(aws autoscaling describe-instance-refreshes --auto-scaling-group-name "$ASG" --max-records 1 \
-    --query 'InstanceRefreshes[0].[Status,PercentageComplete]' --output text)
+    --query 'InstanceRefreshes[0].[Status,PercentageComplete]' --output text | nocr)
   echo "  $(date +%H:%M:%S) $status"
   case "${status%%[[:space:]]*}" in
     Successful) break ;;
@@ -172,10 +183,10 @@ done
 
 # ---------------------------------------------------------------------------
 log "Verify the new version behind the ALB"
-TG_ARN=$(aws elbv2 describe-target-groups --names "$(echo "$ASG" | sed 's/-asg$//')-tg" --query 'TargetGroups[0].TargetGroupArn' --output text)
+TG_ARN=$(aws elbv2 describe-target-groups --names "${ASG%-asg}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text | nocr)
 for i in $(seq 1 40); do
-  states=$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --query 'TargetHealthDescriptions[].TargetHealth.State' --output text)
-  versions=$(for _ in 1 2 3 4 5 6; do curl -fsS -m 5 "$URL/api/instance" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["version"])' 2>/dev/null || echo error; done | sort -u | tr '\n' ' ')
+  states=$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --query 'TargetHealthDescriptions[].TargetHealth.State' --output text | nocr)
+  versions=$(for _ in 1 2 3 4 5 6; do curl -fsS -m 5 "$URL/api/instance" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["version"])' 2>/dev/null || echo error; done | nocr | sort -u | tr '\n' ' ')
   echo "  targets: [$states]  versions served: [$versions]"
   # every target exactly "healthy" ("unhealthy" must not match) and only the new version answering
   if [ -n "$states" ] && ! tr '\t' '\n' <<<"$states" | grep -qvx healthy && [ "$versions" = "$TAG " ]; then break; fi
@@ -184,10 +195,12 @@ for i in $(seq 1 40); do
 done
 
 curl -fsS -m 10 "$URL/api/health" >/dev/null || fail "/api/health failed"
-ready=$(curl -fsS -m 10 "$URL/api/health/ready") || fail "/api/health/ready failed"
+ready=$(curl -fsS -m 10 "$URL/api/health/ready" | nocr) || fail "/api/health/ready failed"
 grep -q '"database":"ok"' <<<"$ready" || fail "readiness does not report the database as ok: $ready"
-curl -fsS -m 10 -o /dev/null "$URL/api/products?limit=1" || fail "/api/products failed"
-curl -fsS -m 10 -o /dev/null "$URL/" || fail "SPA did not load"
+# Shell redirection, not `curl -o /dev/null`: with MSYS_NO_PATHCONV a native
+# Windows curl cannot open the literal path /dev/null.
+curl -fsS -m 10 "$URL/api/products?limit=1" >/dev/null || fail "/api/products failed"
+curl -fsS -m 10 "$URL/" >/dev/null || fail "SPA did not load"
 echo "  /api/health ok, /api/health/ready database ok, products and SPA ok"
 
 if $CHECKOUT_SMOKE; then
@@ -221,5 +234,9 @@ drift=$?
 set -e
 [ $drift -eq 0 ] || fail "terraform plan is not clean after the deployment (exit $drift)"
 
-log "Deployed $REPO_NAME:$TAG in $(( $(date +%s) - START )) s (previous: $CURRENT_TAG)"
-echo "Roll back with: scripts/deploy.sh --rollback $CURRENT_TAG"
+if $ALREADY_DEPLOYED; then
+  log "Verified the live deployment of $REPO_NAME:$TAG in $(( $(date +%s) - START )) s"
+else
+  log "Deployed $REPO_NAME:$TAG in $(( $(date +%s) - START )) s (previous: $CURRENT_TAG)"
+  echo "Roll back with: scripts/deploy.sh --rollback $CURRENT_TAG"
+fi

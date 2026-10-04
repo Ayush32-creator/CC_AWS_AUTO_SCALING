@@ -63,7 +63,10 @@ aws login --region ap-southeast-2 --profile cc-project   # once per day (session
 scripts/deploy.sh                    # build + push this commit's image, then deploy it
 scripts/deploy.sh --checkout-smoke   # also place 1 test order + replay it
 scripts/deploy.sh --yes              # no confirmation prompt
+scripts/deploy.sh --plan-only        # plan + guard only, apply nothing
 ```
+
+Re-running the script for a tag that is already deployed applies nothing and runs the full verification against the live deployment (useful as a health check).
 
 Prerequisites: AWS CLI v2, Terraform ≥ 1.10, Docker running, Python 3, `infra/envs/dev/terraform.tfvars` and `backend.hcl` (git-ignored; see the `.example` files).
 
@@ -109,3 +112,20 @@ After "activate advanced AWS features", or in a standard AWS account, the deploy
    - `autoscaling:UpdateAutoScalingGroup` / `StartInstanceRefresh` on the app ASG;
    - `iam:PassRole` for the instance role only.
 4. A `deploy` job with `permissions: id-token: write`, gated on the `image` job and `github.ref == 'refs/heads/main'`, running `scripts/deploy.sh --yes`.
+
+## Verification results (2026-10-05)
+
+| Check | Result |
+|---|---|
+| Repository | `Ayush32-creator/CC_AWS_AUTO_SCALING`, **private**. GitHub repo secrets: **0**, variables: **0**, environments: **0** |
+| First CI run on `main` (`d9b1f17`) | backend, frontend, Terraform and secret jobs passed; **image job failed**: Trivy found 10 HIGH CVEs, all in the npm CLI bundled with `node:22-alpine` (`/usr/local/lib/node_modules/npm`: brace-expansion, ip-address, pacote, picomatch, sigstore). The gate worked as intended |
+| Fix via **pull request #1** (`4a3fe92`) | npm/npx, corepack and yarn removed from the runtime stage (the app never uses them). **PR CI: all 5 jobs green**. Every job's `GITHUB_TOKEN` had only `Contents: read` + `Metadata: read`. 0 AWS-related strings in the logs; nothing deployed |
+| `main` CI after merge (`24db594`, `d629ab9`, `f85f094`) | all 5 jobs green on every push |
+| Deploy-script issues found during the test | Two runs stopped **safely at the plan guard** (a Python quoting bug, then Windows Python unable to read Git Bash's `/tmp`). Each time nothing was applied and `terraform.tfvars` was restored. The verification loop then never matched because native Windows tools emit `` in pipes, and `curl -o /dev/null` failed under `MSYS_NO_PATHCONV`. All fixed (`f85f094` + follow-up), the guard was tested against a real and a tampered plan (tampered → refused), and the final script passes ShellCheck |
+| Deployment of `f85f094` | build → ECR push (immutable tag) → guard (only launch template `user_data` + ASG `launch_template`) → apply **0 add / 2 change / 0 destroy** → instance refresh Successful. `i-0f728c5cdb3aa7aa2` (`a0cbc11`) → **`i-03cab923030c37dd0`** (`f85f094`) |
+| Availability during rollout | **301/301 probes HTTP 200** (no downtime; both versions served briefly during the overlap) |
+| Post-deploy verification (script) | target healthy, only `f85f094` served; `/api/health` 200; `/api/health/ready` → `database: ok`; products and SPA OK; **checkout 201 PAID** (`e5e0216f-…`) and **idempotent replay 200 (same order)**; final `terraform plan` → **no changes** |
+| CloudWatch | new instance stream: `Checkout API listening`, `Pending-order reaper started`, the smoke checkout (`paid`, 213 ms) and its replay; **0 error lines**. All 4 alarms **OK** |
+| ECR | tagged releases: `f85f094` (running), `d629ab9`, `24db594`, `a0cbc11` (previous working image, rollback target), `8bc96ee`. `f85f094` scan: **0 findings**. The lifecycle policy keeps the newest 5, so the next release will expire `8bc96ee` |
+| AWS resources added for CI/CD | **none** |
+
