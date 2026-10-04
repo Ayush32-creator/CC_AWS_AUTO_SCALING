@@ -236,3 +236,20 @@ The first `terraform apply` of the dev stack created 39 of 45 resources and then
 
 Point-in-time recovery is limited to the last 24 hours. That's acceptable for a dev stack that is destroyed after each session.
 
+### Dev stack deployed and verified (2026-10-04)
+After the Free plan fix, the remaining 6 resources applied cleanly. Terraform state holds **45 resources**, and a follow-up plan shows no changes.
+
+| Check | Result |
+|---|---|
+| VPC / subnets | `10.0.0.0/16`; 2 public, 2 app and 2 DB subnets in ap-southeast-2a/2b; the DB route table has only the local route; no NAT Gateway |
+| Security groups | alb-sg: 80 from the internet → app-sg: 3000 from alb-sg only → db-sg: 5432 from app-sg only; the default SG has no rules |
+| ALB | active, internet-facing, 2 AZs, HTTP:80 forward, access logs to `cc-checkout-artifacts-…/alb-logs`, invalid headers dropped |
+| Target group | `/api/health` every 15 s; 1 target **healthy** |
+| ASG | min 1 / desired 1 / max 2, ELB health checks, CPU 60% and 300 requests/target tracking policies; 1 instance InService |
+| EC2 | 1 × t3.micro (AL2023), IMDSv2 required, instance profile attached |
+| RDS | PostgreSQL 16.13, db.t4g.micro, **not publicly accessible**, encrypted gp3 20 GB, Single-AZ, backups 1 day, `rds.force_ssl = 1` |
+| Secrets Manager | RDS-managed master secret, active, rotation every 7 days |
+| CloudWatch Logs | `/cc-checkout/dev/app` (one stream per instance) and the RDS PostgreSQL log group, 7-day retention |
+| SSM | instance **Online** (Session Manager available, no SSH) |
+| App via ALB | `/api/health` 200; `/api/health/ready` 200 `database: ok` (TLS to RDS); `/api/instance` reports version **8bc96ee**; SPA and products load; checkout returns 201 `PAID`; same Idempotency-Key replays the same order (200, `Idempotent-Replayed: true`) and stock is reduced only once |
+
