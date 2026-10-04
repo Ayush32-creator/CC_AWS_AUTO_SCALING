@@ -17,7 +17,7 @@ function json(body, status = 200) {
 function mockApi() {
   return vi.fn((url, init = {}) => {
     if (url.startsWith('/api/products')) return json({ items: PRODUCTS, page: 1, limit: 50, total: 2 });
-    if (url === '/api/instance') return json({ instanceId: 'i-0abc', availabilityZone: 'ap-south-1a', version: 'test' });
+    if (url === '/api/instance') return json({ instanceId: 'i-0abc', availabilityZone: 'ap-southeast-2a', version: 'test' });
     if (url === '/api/cart/quote') {
       const { items } = JSON.parse(init.body);
       const lines = items.map((i) => ({

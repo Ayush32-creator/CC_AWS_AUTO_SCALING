@@ -1,7 +1,7 @@
 # ---- General -------------------------------------------------------------
 variable "region" {
   type    = string
-  default = "ap-south-1"
+  default = "ap-southeast-2"
 }
 
 variable "project" {
@@ -17,7 +17,7 @@ variable "environment" {
 # ---- Network (docs/01-architecture.md §3) ----------------------------------
 variable "azs" {
   type    = list(string)
-  default = ["ap-south-1a", "ap-south-1b"]
+  default = ["ap-southeast-2a", "ap-southeast-2b"]
 }
 
 variable "vpc_cidr" {
@@ -41,9 +41,12 @@ variable "db_subnet_cidrs" {
 }
 
 variable "enable_nat_gateway" {
-  description = "true = instances in private subnets behind a NAT Gateway (~$0.056/h). false = public subnets, cheaper."
+  # Default false since Phase 4 (docs/06-infrastructure.md §6): instances need
+  # only outbound HTTPS to AWS APIs, which public IPs + the S3 gateway endpoint
+  # cover; app-sg still admits traffic from the ALB only.
+  description = "true = instances in private subnets behind a NAT Gateway (~$0.059/h + $0.059/GB in ap-southeast-2). false = public subnets with public IPs (~$0.005/h each), cheaper."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "alb_ingress_cidrs" {
@@ -102,8 +105,11 @@ variable "asg_desired_capacity" {
 }
 
 variable "asg_max_size" {
+  # 2, not 4: the AWS project's EC2 quota is 5 vCPUs ("Running On-Demand
+  # Standard instances", checked 2026-10-04) and t3.micro uses 2 vCPUs.
+  # Raise it after a quota increase (docs/06-infrastructure.md §4).
   type    = number
-  default = 4
+  default = 2
 
   validation {
     condition     = var.asg_max_size <= 6

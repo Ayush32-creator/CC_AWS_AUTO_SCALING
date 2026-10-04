@@ -10,8 +10,8 @@ mock_provider "aws" {
 
   mock_data "aws_ecr_repository" {
     defaults = {
-      repository_url = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/cc-checkout"
-      arn            = "arn:aws:ecr:ap-south-1:123456789012:repository/cc-checkout"
+      repository_url = "123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/cc-checkout"
+      arn            = "arn:aws:ecr:ap-southeast-2:123456789012:repository/cc-checkout"
     }
   }
 
@@ -24,16 +24,16 @@ mock_provider "aws" {
   # Realistic ARNs so IAM policy references can be checked.
   mock_resource "aws_cloudwatch_log_group" {
     defaults = {
-      arn = "arn:aws:logs:ap-south-1:123456789012:log-group:/cc-checkout/dev/app"
+      arn = "arn:aws:logs:ap-southeast-2:123456789012:log-group:/cc-checkout/dev/app"
     }
   }
 
   mock_resource "aws_db_instance" {
     defaults = {
-      address = "cc-checkout-dev-postgres.abc123.ap-south-1.rds.amazonaws.com"
+      address = "cc-checkout-dev-postgres.abc123.ap-southeast-2.rds.amazonaws.com"
       port    = 5432
       master_user_secret = [{
-        secret_arn    = "arn:aws:secretsmanager:ap-south-1:123456789012:secret:rds!db-1234"
+        secret_arn    = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234"
         secret_status = "active"
         kms_key_id    = ""
       }]
@@ -42,15 +42,15 @@ mock_provider "aws" {
 
   mock_resource "aws_lb" {
     defaults = {
-      arn        = "arn:aws:elasticloadbalancing:ap-south-1:123456789012:loadbalancer/app/cc-checkout-dev-alb/50dc6c495c0c9188"
+      arn        = "arn:aws:elasticloadbalancing:ap-southeast-2:123456789012:loadbalancer/app/cc-checkout-dev-alb/50dc6c495c0c9188"
       arn_suffix = "app/cc-checkout-dev-alb/50dc6c495c0c9188"
-      dns_name   = "cc-checkout-dev-alb-123.ap-south-1.elb.amazonaws.com"
+      dns_name   = "cc-checkout-dev-alb-123.ap-southeast-2.elb.amazonaws.com"
     }
   }
 
   mock_resource "aws_lb_target_group" {
     defaults = {
-      arn        = "arn:aws:elasticloadbalancing:ap-south-1:123456789012:targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
+      arn        = "arn:aws:elasticloadbalancing:ap-southeast-2:123456789012:targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
       arn_suffix = "targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
     }
   }
@@ -83,27 +83,28 @@ run "network_layout" {
     error_message = "Expected one public, app and DB subnet in each of the two AZs."
   }
 
-  assert {
-    condition     = module.network.instances_need_public_ip == false
-    error_message = "With NAT enabled, instances must not get public IPs."
-  }
-}
-
-run "nat_disabled_moves_instances_to_public_subnets" {
-  command = plan
-
-  variables {
-    enable_nat_gateway = false
-  }
-
+  # Default: no NAT Gateway, instances in public subnets with public IPs.
   assert {
     condition     = module.network.instances_need_public_ip
-    error_message = "Without NAT, instances need public IPs for egress."
+    error_message = "Without NAT (the default), instances need public IPs for egress."
   }
 
   assert {
     condition     = module.network.nat_gateway_public_ip == null
-    error_message = "No NAT Gateway should be created when disabled."
+    error_message = "No NAT Gateway should be created by default."
+  }
+}
+
+run "nat_enabled_keeps_instances_private" {
+  command = plan
+
+  variables {
+    enable_nat_gateway = true
+  }
+
+  assert {
+    condition     = module.network.instances_need_public_ip == false
+    error_message = "With NAT enabled, instances must not get public IPs."
   }
 }
 
@@ -111,12 +112,12 @@ run "database_is_private_encrypted_and_secret_managed" {
   command = plan
 
   assert {
-    condition     = output.db_secret_arn == "arn:aws:secretsmanager:ap-south-1:123456789012:secret:rds!db-1234"
+    condition     = output.db_secret_arn == "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234"
     error_message = "The app must receive the RDS-managed secret ARN."
   }
 
   assert {
-    condition     = output.db_endpoint == "cc-checkout-dev-postgres.abc123.ap-south-1.rds.amazonaws.com:5432"
+    condition     = output.db_endpoint == "cc-checkout-dev-postgres.abc123.ap-southeast-2.rds.amazonaws.com:5432"
     error_message = "db_endpoint output is wired incorrectly."
   }
 }
@@ -130,7 +131,7 @@ run "scaling_configuration" {
   }
 
   assert {
-    condition     = output.app_url == "http://cc-checkout-dev-alb-123.ap-south-1.elb.amazonaws.com"
+    condition     = output.app_url == "http://cc-checkout-dev-alb-123.ap-southeast-2.elb.amazonaws.com"
     error_message = "app_url must point at the ALB."
   }
 }

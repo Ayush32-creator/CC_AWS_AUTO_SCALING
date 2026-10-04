@@ -13,7 +13,7 @@ terraform {
   #   terraform init -backend-config=backend.hcl
   backend "s3" {
     key          = "envs/dev/terraform.tfstate"
-    region       = "ap-south-1"
+    region       = "ap-southeast-2"
     encrypt      = true
     use_lockfile = true # lock file in S3; no DynamoDB table needed
   }

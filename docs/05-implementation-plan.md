@@ -35,7 +35,7 @@ CC_CP/
 | 3 Docker + IaC | ✅ Complete, awaiting review (nothing applied) |
 | 4–6 | Not started |
 
-Decisions: region **ap-south-1 (Mumbai)**. Git is initialised with one commit per phase and no remote push.
+Decisions: region **ap-southeast-2 (Sydney)**, the Region assigned to the AWS project (changed from ap-south-1 in Phase 4). Git is initialised with one commit per phase and no remote push.
 
 ## Phases
 

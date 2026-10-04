@@ -61,7 +61,7 @@ resource "aws_db_instance" "this" {
 
   multi_az                = var.multi_az
   backup_retention_period = var.backup_retention_days
-  backup_window           = "19:00-19:30" # 00:30-01:00 IST
+  backup_window           = "19:00-19:30" # 05:00-05:30 AEST (06:00-06:30 AEDT)
   maintenance_window      = "sun:20:00-sun:20:30"
 
   auto_minor_version_upgrade = true

@@ -11,24 +11,24 @@ mock_provider "aws" {
 
 variables {
   name                    = "cc-checkout-dev"
-  region                  = "ap-south-1"
+  region                  = "ap-southeast-2"
   subnet_ids              = ["subnet-a", "subnet-b"]
   security_group_id       = "sg-app"
   associate_public_ip     = false
-  target_group_arn        = "arn:aws:elasticloadbalancing:ap-south-1:123456789012:targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
+  target_group_arn        = "arn:aws:elasticloadbalancing:ap-southeast-2:123456789012:targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
   alb_arn_suffix          = "app/cc-checkout-dev-alb/50dc6c495c0c9188"
   target_group_arn_suffix = "targetgroup/cc-checkout-dev-tg/73e2d6bc24d8a067"
-  ecr_repository_url      = "123456789012.dkr.ecr.ap-south-1.amazonaws.com/cc-checkout"
-  ecr_repository_arn      = "arn:aws:ecr:ap-south-1:123456789012:repository/cc-checkout"
+  ecr_repository_url      = "123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/cc-checkout"
+  ecr_repository_arn      = "arn:aws:ecr:ap-southeast-2:123456789012:repository/cc-checkout"
   image_tag               = "abc1234"
   app_port                = 3000
   log_group_name          = "/cc-checkout/dev/app"
-  log_group_arn           = "arn:aws:logs:ap-south-1:123456789012:log-group:/cc-checkout/dev/app"
+  log_group_arn           = "arn:aws:logs:ap-southeast-2:123456789012:log-group:/cc-checkout/dev/app"
   db_host                 = "db.internal"
   db_port                 = 5432
   db_name                 = "checkout"
   db_user                 = "checkout_admin"
-  db_secret_arn           = "arn:aws:secretsmanager:ap-south-1:123456789012:secret:rds!db-1234"
+  db_secret_arn           = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234"
   min_size                = 1
   desired_capacity        = 2
   max_size                = 4
@@ -67,12 +67,12 @@ run "user_data_contains_no_secrets_and_correct_image" {
   command = plan
 
   assert {
-    condition     = strcontains(local.user_data, "docker pull \"123456789012.dkr.ecr.ap-south-1.amazonaws.com/cc-checkout:abc1234\"")
+    condition     = strcontains(local.user_data, "docker pull \"123456789012.dkr.ecr.ap-southeast-2.amazonaws.com/cc-checkout:abc1234\"")
     error_message = "User-data must pull the configured image tag."
   }
 
   assert {
-    condition     = strcontains(local.user_data, "DB_SECRET_ARN=\"arn:aws:secretsmanager:ap-south-1:123456789012:secret:rds!db-1234\"")
+    condition     = strcontains(local.user_data, "DB_SECRET_ARN=\"arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234\"")
     error_message = "User-data must pass the secret ARN (not a password)."
   }
 
@@ -82,7 +82,7 @@ run "user_data_contains_no_secrets_and_correct_image" {
   }
 
   assert {
-    condition     = local.registry == "123456789012.dkr.ecr.ap-south-1.amazonaws.com"
+    condition     = local.registry == "123456789012.dkr.ecr.ap-southeast-2.amazonaws.com"
     error_message = "ECR registry host parsed incorrectly."
   }
 }
@@ -125,7 +125,7 @@ run "iam_policy_is_least_privilege" {
   assert {
     condition = one([
       for s in jsondecode(aws_iam_role_policy.app.policy).Statement : s.Resource if s.Sid == "ReadDatabaseSecret"
-    ]) == "arn:aws:secretsmanager:ap-south-1:123456789012:secret:rds!db-1234"
+    ]) == "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:rds!db-1234"
     error_message = "Secret access must be scoped to the single DB secret."
   }
 }

@@ -1,5 +1,5 @@
 # Copy to terraform.tfvars (git-ignored) and adjust.
-region  = "ap-south-1"
+region  = "ap-southeast-2"
 project = "cc-checkout"
 
 # Strongly recommended: get an email before spend exceeds the budget.

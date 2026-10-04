@@ -19,9 +19,9 @@ override_resource {
 
 variables {
   name                = "cc-checkout-dev"
-  region              = "ap-south-1"
+  region              = "ap-southeast-2"
   vpc_cidr            = "10.0.0.0/16"
-  azs                 = ["ap-south-1a", "ap-south-1b"]
+  azs                 = ["ap-southeast-2a", "ap-southeast-2b"]
   public_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
   app_subnet_cidrs    = ["10.0.11.0/24", "10.0.12.0/24"]
   db_subnet_cidrs     = ["10.0.21.0/24", "10.0.22.0/24"]
@@ -32,7 +32,7 @@ run "three_tiers_across_two_azs" {
   command = plan
 
   assert {
-    condition     = [for s in aws_subnet.public : s.availability_zone] == ["ap-south-1a", "ap-south-1b"]
+    condition     = [for s in aws_subnet.public : s.availability_zone] == ["ap-southeast-2a", "ap-southeast-2b"]
     error_message = "Public subnets must span both AZs."
   }
 
@@ -69,7 +69,7 @@ run "routing_with_nat" {
   }
 
   assert {
-    condition     = aws_vpc_endpoint.s3.vpc_endpoint_type == "Gateway" && aws_vpc_endpoint.s3.service_name == "com.amazonaws.ap-south-1.s3"
+    condition     = aws_vpc_endpoint.s3.vpc_endpoint_type == "Gateway" && aws_vpc_endpoint.s3.service_name == "com.amazonaws.ap-southeast-2.s3"
     error_message = "A free S3 gateway endpoint is expected."
   }
 }
@@ -106,7 +106,7 @@ run "rejects_single_az" {
   command = plan
 
   variables {
-    azs                 = ["ap-south-1a"]
+    azs                 = ["ap-southeast-2a"]
     public_subnet_cidrs = ["10.0.1.0/24"]
     app_subnet_cidrs    = ["10.0.11.0/24"]
     db_subnet_cidrs     = ["10.0.21.0/24"]

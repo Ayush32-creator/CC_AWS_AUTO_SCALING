@@ -78,7 +78,7 @@ flowchart LR
 | Private-app | 10.0.11.0/24, 10.0.12.0/24 | `0.0.0.0/0 → NAT` | EC2 instances (private IPs only) |
 | Private-DB | 10.0.21.0/24, 10.0.22.0/24 | local only | RDS (no internet route at all) |
 
-Two AZs are the minimum: the ALB and the RDS subnet group both require subnets in two or more AZs. Region: **ap-south-1 (Mumbai)**, AZs `ap-south-1a` and `ap-south-1b`.
+Two AZs are the minimum: the ALB and the RDS subnet group both require subnets in two or more AZs. Region: **ap-southeast-2 (Sydney)**, AZs `ap-southeast-2a` and `ap-southeast-2b`. *(Changed in Phase 4 from ap-south-1: the AWS project is assigned to Sydney, and a project can create Regional resources only in its assigned Region.)*
 
 *Added in Phase 3:* a free **S3 gateway endpoint** on the app and public route tables. ECR image layers are served from S3, so image pulls bypass the NAT Gateway and avoid NAT data charges.
 
@@ -90,7 +90,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 | `app-sg` | TCP 3000 **from `alb-sg` only** | 443 → anywhere (ECR, Secrets Manager, CloudWatch via NAT); 5432 → `db-sg` |
 | `db-sg` | TCP 5432 **from `app-sg` only** | none |
 
-**Cost toggle:** `enable_nat_gateway = false` puts instances in the public subnets with public IPs. Inbound traffic is still restricted to `alb-sg`. This saves ~$0.045/h. The default is `true` because the private-subnet design is the correct one to demonstrate.
+**Cost toggle:** `enable_nat_gateway = false` puts instances in the public subnets with public IPs. Inbound traffic is still restricted to `alb-sg`, so the instances are unreachable except through the ALB. **Since Phase 4 the default is `false`** (decision and reasoning in docs/06 §7). It saves ~$0.054/h in Sydney, about 30% of the hourly cost. The private-subnet + NAT design above is unchanged and can be turned on for a session with `enable_nat_gateway = true`, for example to capture route-table evidence for the report.
 
 ## 4. Correctness under concurrency
 
@@ -103,7 +103,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 - **No overselling:** `UPDATE products SET stock = stock - $q WHERE id = $id AND stock >= $q`. If 0 rows are updated, the order is rolled back with `409 OUT_OF_STOCK`. A `CHECK (stock >= 0)` constraint is the backstop.
 - **Server-side pricing:** totals are computed from DB prices. Money is stored as integer cents.
 - **Migrations:** run at container start under a Postgres **advisory lock**, so several instances booting at once cannot race.
-- **Connection budget:** pool of 10 per instance × max 4 instances = 40 connections, well under the ~80 a `db.t4g.micro` allows.
+- **Connection budget:** pool of 10 per instance × max 2 instances = 20 connections (max 4 → 40 if the vCPU quota is raised), well under the ~80 a `db.t4g.micro` allows.
 - **Graceful shutdown:** on `SIGTERM` (scale-in or instance refresh), stop accepting requests, finish in-flight ones and close the pool. The ALB deregistration delay is set to 30 s.
 
 ## 5. Observability (Unit V)

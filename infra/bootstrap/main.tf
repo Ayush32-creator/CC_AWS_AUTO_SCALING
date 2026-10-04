@@ -7,9 +7,7 @@
 # after each session; these resources stay.
 
 data "aws_caller_identity" "current" {}
-
-# ELB's regional service account must be allowed to write ALB access logs.
-data "aws_elb_service_account" "this" {}
+data "aws_region" "current" {}
 
 locals {
   account_id      = data.aws_caller_identity.current.account_id
@@ -153,12 +151,20 @@ resource "aws_s3_bucket_policy" "artifacts" {
     Version = "2012-10-17"
     Statement = [
       local.deny_insecure_transport["artifacts"],
+      # Log-delivery *service* principal, not the legacy regional ELB account:
+      # the AWS project's resource control policy denies S3 access from
+      # principals outside the organization unless they are AWS services.
       {
         Sid       = "AllowAlbAccessLogDelivery"
         Effect    = "Allow"
-        Principal = { AWS = data.aws_elb_service_account.this.arn }
+        Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
         Action    = "s3:PutObject"
         Resource  = "${aws_s3_bucket.artifacts.arn}/alb-logs/AWSLogs/${local.account_id}/*"
+        Condition = {
+          ArnLike = {
+            "aws:SourceArn" = "arn:aws:elasticloadbalancing:${data.aws_region.current.region}:${local.account_id}:loadbalancer/*"
+          }
+        }
       },
     ]
   })

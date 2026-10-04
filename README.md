@@ -2,7 +2,7 @@
 
 A cloud computing course project: a React + Node.js checkout application deployed on AWS. It runs on EC2 instances in an Auto Scaling Group behind an Application Load Balancer, uses RDS PostgreSQL for storage, and is monitored with CloudWatch. All infrastructure is provisioned with Terraform.
 
-**Current status:** Phase 3 (Docker + Terraform) is complete and awaiting review. The Terraform has been validated and tested offline only; **no AWS resources exist yet**. Region: ap-south-1 (Mumbai).
+**Current status:** Phase 3 (Docker + Terraform) is complete and awaiting review. The Terraform has been validated and tested offline only; **no AWS resources exist yet**. Region: ap-southeast-2 (Sydney).
 
 | Doc | Contents |
 |---|---|

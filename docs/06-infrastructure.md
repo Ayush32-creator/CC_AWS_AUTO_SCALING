@@ -70,7 +70,7 @@ Why two stacks:
 | TFLint + AWS ruleset 0.40 (`infra/.tflint.hcl`) | 0 issues |
 | Trivy IaC scan (139 checks) | 0 failures; accepted risks are annotated inline (table below) |
 | Rendered user-data: `bash -n` + ShellCheck | 0 findings |
-| Real `terraform plan` against AWS | **Not run.** No AWS credentials are configured. It is the first step of Phase 4 (read-only, free). |
+| Real `terraform plan` against AWS | Phase 4, 2026-10-04: **bootstrap** planned against `cc-project`, 16 to add, 0 to change, 0 to destroy. **dev** can only be planned after bootstrap exists (S3 state backend + ECR data source). |
 
 ### Accepted security findings (documented, not fixed)
 
@@ -110,21 +110,22 @@ Tip: the AWS provider is about 800 MB. A plugin cache (`plugin_cache_dir` in `%A
 
 ## 4. AWS-side prerequisites (manual, before Phase 4)
 
-1. **AWS account** with MFA enabled on the root user. Don't use root for daily work.
-2. **An admin identity for Terraform.** Preferably an IAM Identity Center (SSO) user with `AdministratorAccess`; otherwise an IAM user with access keys.
+1. **AWS project** (new AWS sign-up experience), project `cc-project`, Region **ap-southeast-2**. There is no IAM user and there are no access keys. The CLI uses short-lived credentials from the browser-based `aws login`:
    ```powershell
-   winget install -e --id Amazon.AWSCLI
-   aws configure sso          # or: aws configure   (keys are stored in %USERPROFILE%\.aws, never in the repo)
-   aws sts get-caller-identity
-   aws configure set region ap-south-1
+   aws configure set region ap-southeast-2 --profile cc-project
+   aws login --region ap-southeast-2 --profile cc-project   # opens the browser; pick the project
+   aws sts get-caller-identity --profile cc-project
+   $env:AWS_PROFILE = "cc-project"                           # Terraform and the commands below use this profile
    ```
-3. **EC2 vCPU quota.** Four `t3.micro` instances need **8 vCPUs** of "Running On-Demand Standard instances". New accounts sometimes start lower. Check it:
+   When the session expires, run `aws login` again. Credentials are cached in `%USERPROFILE%\.aws`, never in the repo.
+2. **EC2 vCPU quota.** Four `t3.micro` instances need **8 vCPUs** of "Running On-Demand Standard instances". New accounts sometimes start lower. Check it:
    ```powershell
-   aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A --region ap-south-1 --query Quota.Value
+   aws service-quotas get-service-quota --service-code ec2 --quota-code L-1216C47A --region ap-southeast-2 --query Quota.Value
    ```
    If the value is below 8, request an increase in the Service Quotas console (free, but it can take hours). Alternatively, set `asg_max_size` to fit the quota.
-4. **Budget email.** After the bootstrap apply, confirm the subscription email AWS sends.
-5. **Docker Desktop running**, so the image can be built and pushed.
+   *Checked 2026-10-04: the project's quota is **5 vCPUs**, which fits only 2 × `t3.micro`. Decision: no quota request for now. `asg_max_size` defaults to **2**, so the group scales between 1 and 2 instances. The rolling instance refresh (min 50% healthy) replaces instances one at a time and never runs more than 2. To go back to 4, request 8 vCPUs and set `asg_max_size = 4`.*
+3. **Budget email.** After the bootstrap apply, confirm the subscription email AWS sends.
+4. **Docker Desktop running**, so the image can be built and pushed.
 
 ## 5. Phase 4 runbook (preview; not executed yet)
 
@@ -139,7 +140,7 @@ terraform apply tfplan
 # 2. Build and push the image
 $TAG  = git rev-parse --short HEAD
 $REPO = terraform output -raw ecr_repository_url
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $REPO.Split('/')[0]
+aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin $REPO.Split('/')[0]
 docker build -f ..\..\backend\Dockerfile -t "${REPO}:${TAG}" ..\..
 docker push "${REPO}:${TAG}"
 
@@ -165,7 +166,43 @@ Note on `docker build` on Windows: the image is built for `linux/amd64`, which m
 | **Orders stuck in `PENDING`.** If an instance dies between the stock reservation and the payment result, the order stays `PENDING` with its stock reserved. | **Phase 5:** a periodic reaper that marks `PENDING` orders older than N minutes as `PAYMENT_FAILED` and releases their stock. It runs under an advisory lock, so only one instance does it. A CloudWatch metric/alarm will count stale `PENDING` orders. |
 | The app connects as the RDS **master** user. | Phase 5 (optional): a least-privilege `app_user` created by migration. |
 | HTTP only, with no TLS on the ALB. | Needs a domain + ACM certificate. Documented as a production improvement. |
-| Single NAT Gateway | Saves about $0.056/h. If AZ-a fails, instances in AZ-b lose egress, but serving traffic is unaffected. Production would use one NAT per AZ. |
+| No NAT Gateway by default (§7) | Instances have public IPs; `app-sg` admits only the ALB. With `enable_nat_gateway = true` there is a single NAT (~$0.059/h): if AZ-a fails, instances in AZ-b lose egress, but serving traffic is unaffected. Production would use private subnets with one NAT per AZ, or VPC interface endpoints. |
 | No VPC Flow Logs, WAF or GuardDuty | Extra cost. Mentioned in the security section of the report. |
 | Bootstrap state is a local file | Back up `infra/bootstrap/terraform.tfstate`. It is small and can be recreated with `terraform import` if lost. |
 | GitHub OIDC role for CI/CD | Phase 5, together with the workflows. |
+
+## 7. Phase 4 changes: AWS project and Region
+
+The AWS account is a **project** in the new AWS sign-up experience (`cc-project`, account 498245873403, Free plan with $100 credits). Its managed service and resource control policies drove these changes.
+
+### Region: ap-south-1 → ap-southeast-2
+A project can create Regional resources only in its assigned Region, which is **ap-southeast-2 (Sydney)**. Changed:
+
+| File | Change |
+|---|---|
+| `bootstrap/variables.tf`, `bootstrap/terraform.tfvars.example` | `region` default → `ap-southeast-2` |
+| `envs/dev/variables.tf` | `region` → `ap-southeast-2`; `azs` → `ap-southeast-2a`, `ap-southeast-2b` |
+| `envs/dev/versions.tf` | S3 backend `region` → `ap-southeast-2` (the state bucket is created by bootstrap in the same Region) |
+| `modules/database/main.tf` | Comment only: the backup window 19:00 UTC is 05:00 AEST |
+| `envs/dev/tests`, `modules/network/tests`, `modules/compute/tests` | Mock ARNs, AZs and endpoint names use the new Region |
+| Docs 01, 04, 05, 06, README | Region and costs |
+
+The modules had no hard-coded Region. The S3 endpoint name, ECR registry and log driver Region all come from `var.region`.
+
+### NAT Gateway: off by default
+The instances only make **outbound HTTPS** calls (ECR, Secrets Manager, CloudWatch Logs, SSM, Amazon Linux repositories) and PostgreSQL to RDS inside the VPC. Options:
+
+| Option | Extra cost/h (Sydney) | Notes |
+|---|---|---|
+| **Public subnets + public IP per instance (chosen)** | $0.005 per instance | `app-sg` accepts only port 3000 from `alb-sg`, so the instances are unreachable from the internet. No SSH; shell access is through SSM. |
+| Private subnets + NAT Gateway | $0.059 + $0.059/GB + 1 EIP | The original design. Still available with `enable_nat_gateway = true`. |
+| Private subnets + interface endpoints (ecr.api, ecr.dkr, secretsmanager, logs, ssm, ssmmessages, ec2messages) | ~7 × 2 AZ × ~$0.011 ≈ $0.15 | Most private, but more expensive than NAT at this scale. |
+
+Image layers and Amazon Linux 2023 packages are served from S3, so they use the free S3 gateway endpoint in both modes. RDS stays in DB subnets with no internet route either way.
+
+### ALB access-log bucket policy
+The project's resource control policy denies S3 access from principals outside the organization unless they are AWS service principals. The legacy policy, which granted access to the regional ELB **account** (`783225319266` in Sydney), would be denied, and enabling ALB access logs would fail. The bucket policy now grants `logdelivery.elasticloadbalancing.amazonaws.com`, which AWS recommends for all Regions. It is restricted with `aws:SourceArn` to load balancers in this account and Region.
+
+### Service availability (Free plan, checked 2026-10-04)
+Every service used is on the Free plan list of the [new AWS sign-up supported services](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html): VPC, EC2 (including Auto Scaling and EBS), Elastic Load Balancing, ECR, RDS, S3, CloudWatch and CloudWatch Logs, Secrets Manager, IAM, STS, KMS, Systems Manager, and AWS Budgets. The Free plan policy blocks Spot instances, dedicated hosts, Reserved Instance purchases, Transit Gateway and VPN; none of them are used. If a spend limit is reached, a separate policy blocks `RunInstances`, `CreateLoadBalancer`, `CreateAutoScalingGroup`, `CreateNatGateway` and `CreateDBInstance`. That policy is the first thing to check if creation suddenly fails with AccessDenied.
+
