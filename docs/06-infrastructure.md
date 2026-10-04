@@ -277,3 +277,14 @@ All alarms use `treat_missing_data = notBreaching`, so an idle stack (no traffic
 
 **Cost:** within the CloudWatch free tier (10 custom metrics, 10 alarms, 3 dashboards per month). EC2 detailed monitoring also uses custom-metric allowance, so expect ≈ $0–0.30/month. Worst case without any free tier: ≈ $4.60/month.
 
+### Increment 1 deployed and verified (2026-10-04)
+Applied with `alarm_email` unset (no SNS): **9 added, 0 changed, 0 destroyed**. The dev state now holds 54 resources, and a follow-up plan shows **no changes**.
+
+| Check | Result |
+|---|---|
+| Metric filters | 4 active on `/cc-checkout/dev/app`: OrdersPlaced, OrdersFailed, AppErrors (default 0) and CheckoutLatency (`$.latencyMs`, no default) |
+| Dashboard `cc-checkout-dev` | 13 widgets: 12 graphs + alarm overview listing the 4 alarms |
+| Alarms | All 4 moved INSUFFICIENT_DATA → **OK** within ~2 min of creation; none fired. Project total: 8 alarms (4 new + 4 target-tracking) |
+| Test checkout | Order `59e51dec-…` 201 `PAID`. Within ~30 s: `OrdersPlaced` = 1, `OrdersFailed` = 0, `AppErrors` = 0, `CheckoutLatency` = 1 sample of **310 ms**, identical to `latencyMs: 310` in the app's log line |
+| Tests / lint / security | monitoring 6/6, dev 7/7, `terraform fmt` clean, TFLint 0 issues, Trivy 138/0 |
+
