@@ -206,3 +206,15 @@ The project's resource control policy denies S3 access from principals outside t
 ### Service availability (Free plan, checked 2026-10-04)
 Every service used is on the Free plan list of the [new AWS sign-up supported services](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html): VPC, EC2 (including Auto Scaling and EBS), Elastic Load Balancing, ECR, RDS, S3, CloudWatch and CloudWatch Logs, Secrets Manager, IAM, STS, KMS, Systems Manager, and AWS Budgets. The Free plan policy blocks Spot instances, dedicated hosts, Reserved Instance purchases, Transit Gateway and VPN; none of them are used. If a spend limit is reached, a separate policy blocks `RunInstances`, `CreateLoadBalancer`, `CreateAutoScalingGroup`, `CreateNatGateway` and `CreateDBInstance`. That policy is the first thing to check if creation suddenly fails with AccessDenied.
 
+### Bootstrap applied (2026-10-04)
+`terraform apply` of the reviewed plan: **17 added, 0 changed, 0 destroyed** (16 S3/ECR resources + the budget). A follow-up `terraform plan` shows no changes.
+
+| Output | Value |
+|---|---|
+| `state_bucket` | `cc-checkout-tfstate-498245873403` |
+| `artifacts_bucket` | `cc-checkout-artifacts-498245873403` |
+| `ecr_repository_url` | `498245873403.dkr.ecr.ap-southeast-2.amazonaws.com/cc-checkout` |
+| Budget | `cc-checkout-monthly`, $10/month; email at 50% forecast and 100% actual |
+
+Verified with the AWS CLI: both buckets are in ap-southeast-2, versioned, SSE-S3, all four public-access blocks on, TLS-only policy; ALB log delivery uses the service principal. ECR tags are immutable, scanned on push, and only the last 5 images are kept. No EC2, RDS, ALB, ASG or NAT resources exist.
+
