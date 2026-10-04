@@ -164,7 +164,7 @@ Note on `docker build` on Windows: the image is built for `linux/amd64`, which m
 
 | Item | Plan |
 |---|---|
-| **Orders stuck in `PENDING`.** If an instance dies between the stock reservation and the payment result, the order stays `PENDING` with its stock reserved. | **Phase 5:** a periodic reaper that marks `PENDING` orders older than N minutes as `PAYMENT_FAILED` and releases their stock. It runs under an advisory lock, so only one instance does it. A CloudWatch metric/alarm will count stale `PENDING` orders. |
+| ~~**Orders stuck in `PENDING`.**~~ | **Done in Phase 5 increment 2:** an in-process reaper on every instance expires `PENDING` orders older than 10 min (`EXPIRED` + reason) and releases their stock. Row locks (`FOR UPDATE SKIP LOCKED`) are used instead of a single advisory-lock leader. See docs/02 "Stale PENDING orders". |
 | The app connects as the RDS **master** user. | Phase 5 (optional): a least-privilege `app_user` created by migration. |
 | HTTP only, with no TLS on the ALB. | Needs a domain + ACM certificate. Documented as a production improvement. |
 | No NAT Gateway by default (§7) | Instances have public IPs; `app-sg` admits only the ALB. With `enable_nat_gateway = true` there is a single NAT (~$0.059/h): if AZ-a fails, instances in AZ-b lose egress, but serving traffic is unaffected. Production would use private subnets with one NAT per AZ, or VPC interface endpoints. |

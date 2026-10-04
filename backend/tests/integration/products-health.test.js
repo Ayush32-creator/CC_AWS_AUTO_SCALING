@@ -1,6 +1,7 @@
+import fs from 'node:fs/promises';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { runMigrations } from '../../src/db/migrate.js';
+import { MIGRATIONS_DIR, runMigrations } from '../../src/db/migrate.js';
 import { buildApp, createTestPool, migrate, resetDb, silentLogger } from './helpers.js';
 
 let pool;
@@ -91,6 +92,8 @@ describe('migrations', () => {
   it('are idempotent and safe to run concurrently (advisory lock)', async () => {
     await Promise.all([runMigrations(pool, silentLogger), runMigrations(pool, silentLogger), runMigrations(pool, silentLogger)]);
     const { rows } = await pool.query('SELECT version FROM schema_migrations ORDER BY version');
-    expect(rows.map((r) => r.version)).toEqual(['001_init.sql', '002_seed.sql']);
+    const files = (await fs.readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith('.sql')).sort();
+    expect(files).toEqual(['001_init.sql', '002_seed.sql', '003_pending_order_expiry.sql']);
+    expect(rows.map((r) => r.version)).toEqual(files); // each applied exactly once
   });
 });

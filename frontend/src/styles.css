@@ -118,6 +118,7 @@ legend { font-weight: 600; padding: 0 0.3rem; }
 .status-paid { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
 .status-pending { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
 .status-payment_failed { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.status-expired { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
 .meta { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1.2rem; margin: 1rem 0 1.5rem; }
 .meta dt { color: var(--muted); }
 .meta dd { margin: 0; word-break: break-all; }

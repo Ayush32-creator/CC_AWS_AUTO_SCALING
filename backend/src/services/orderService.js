@@ -15,6 +15,7 @@ function toOrder(row, items) {
   return {
     id: row.id,
     status: row.status,
+    statusReason: row.status_reason ?? null,
     totalCents: row.total_cents,
     customer: { name: row.customer_name, email: row.customer_email },
     cardLast4: row.card_last4,
@@ -137,7 +138,18 @@ export function createOrderService({ pool, payment, logger }) {
         orderId: existing.order.id,
       });
     }
+    if (existing.row.status === 'EXPIRED') throw checkoutExpired(existing.order.id);
     return { httpStatus: httpStatusFor(existing.row.status), order: existing.order, replayed: true };
+  }
+
+  /** The pending-order reaper gave up on this checkout and released its stock. */
+  function checkoutExpired(orderId) {
+    return new AppError(
+      409,
+      'CHECKOUT_EXPIRED',
+      'This checkout did not complete in time and was cancelled. Please start a new checkout.',
+      { orderId },
+    );
   }
 
   return {
@@ -165,6 +177,27 @@ export function createOrderService({ pool, payment, logger }) {
 
       await finalize(reservation.orderId, paymentResult);
       const { order } = await loadOrder('id', reservation.orderId);
+
+      // The reaper expired this order while the payment call was running
+      // (only possible if the call outlived the pending-order timeout).
+      // finalize() changed nothing, so the stock stays released; if the charge
+      // went through it must be refunded, so log it loudly for reconciliation.
+      if (order.status === 'EXPIRED') {
+        logger.error(
+          {
+            event: 'checkout',
+            outcome: 'expired_during_payment',
+            orderId: order.id,
+            paymentApproved: paymentResult.approved,
+            paymentRef: paymentResult.reference ?? null,
+            latencyMs: Date.now() - startedAt,
+          },
+          paymentResult.approved
+            ? 'Payment approved after the order had expired: refund required'
+            : 'Order expired while the payment was in progress',
+        );
+        throw checkoutExpired(order.id);
+      }
 
       // Structured event consumed by CloudWatch metric filters in Phase 5.
       logger.info(

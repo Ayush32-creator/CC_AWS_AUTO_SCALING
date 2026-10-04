@@ -8,6 +8,8 @@ const STATUS_TEXT = {
   PAID: 'Payment received — thank you for your order!',
   PENDING: 'Your payment is being processed…',
   PAYMENT_FAILED: 'Payment failed. No money was taken.',
+  // Set by the server's pending-order reaper when a checkout never finished.
+  EXPIRED: 'This checkout did not complete and was cancelled. The items were released — please order again.',
 };
 
 export default function OrderPage() {

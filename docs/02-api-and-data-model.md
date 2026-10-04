@@ -16,7 +16,7 @@ All endpoints are under `/api`. Responses are JSON. Errors use one shape:
 | GET | `/api/products?page=&limit=` | Paginated product list | 200 | 400 `VALIDATION_ERROR` |
 | GET | `/api/products/:id` | Single product | 200 | 404 `NOT_FOUND` |
 | POST | `/api/cart/quote` | Validate the cart, then return server-side prices, subtotal and stock warnings | 200 | 400, 404 |
-| POST | `/api/orders` | **Checkout.** Header `Idempotency-Key: <uuid>` is required. The response header `Idempotent-Replayed: true/false` tells the client whether this is a replay | 201 new · 200 replay | 400, 402 `PAYMENT_DECLINED` (body also contains `order`; replaying a declined key returns 402 again), 404 unknown product, 409 `OUT_OF_STOCK` / `IN_PROGRESS`, 422 `IDEMPOTENCY_KEY_REUSED` |
+| POST | `/api/orders` | **Checkout.** Header `Idempotency-Key: <uuid>` is required. The response header `Idempotent-Replayed: true/false` tells the client whether this is a replay | 201 new · 200 replay | 400, 402 `PAYMENT_DECLINED` (body also contains `order`; replaying a declined key returns 402 again), 404 unknown product, 409 `OUT_OF_STOCK` / `IN_PROGRESS` / `CHECKOUT_EXPIRED` (key belongs to a checkout the pending-order reaper cancelled; start a new checkout), 422 `IDEMPOTENCY_KEY_REUSED` |
 | GET | `/api/orders/:id` | Order status and line items | 200 | 404 |
 
 ### `POST /api/orders` body
@@ -48,7 +48,7 @@ CREATE TABLE products (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TYPE order_status AS ENUM ('PENDING', 'PAID', 'PAYMENT_FAILED');
+CREATE TYPE order_status AS ENUM ('PENDING', 'PAID', 'PAYMENT_FAILED', 'EXPIRED');  -- EXPIRED added by 003
 
 CREATE TABLE orders (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,6 +60,7 @@ CREATE TABLE orders (
   total_cents      INTEGER NOT NULL CHECK (total_cents >= 0),
   card_last4       CHAR(4),
   payment_ref      TEXT,
+  status_reason    TEXT,             -- 003: why an order was EXPIRED (no payment data)
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -73,6 +74,8 @@ CREATE TABLE order_items (
 );
 
 CREATE INDEX orders_created_at_idx ON orders (created_at);
+-- 003: partial index for the pending-order reaper
+CREATE INDEX orders_pending_created_at_idx ON orders (created_at) WHERE status = 'PENDING';
 ```
 
 A seed of ~12 products is loaded by migration.
@@ -90,5 +93,41 @@ A seed of ~12 products is loaded by migration.
 3. Call mockPayment(total, card)   ← outside any transaction (no locks held during latency)
 4. TX2: success → status = PAID, payment_ref
         failure → status = PAYMENT_FAILED, restore stock
-5. Emit EMF metric; respond 201 (or 402 on decline)
+        (both updates are conditional: WHERE status = 'PENDING')
+5. Log the structured checkout event (CloudWatch metric filters); respond 201 (or 402 on decline)
 ```
+
+## Stale PENDING orders (pending-order reaper, Phase 5)
+
+An order is `PENDING` only between TX1 and TX2, normally for well under a second. If an instance dies in between (crash, scale-in, failed health check), nothing would ever finish the order, and its stock would stay reserved. Every app instance therefore runs a **reaper** on an interval:
+
+```
+every PENDING_ORDER_REAPER_INTERVAL_SECONDS (default 60 s, random first delay):
+  BEGIN
+    SELECT id FROM orders
+     WHERE status = 'PENDING' AND created_at < now() - PENDING_ORDER_TIMEOUT_SECONDS   (default 600 s)
+     ORDER BY created_at LIMIT batch
+     FOR UPDATE SKIP LOCKED                 ← concurrent reapers claim disjoint orders;
+                                              an order whose TX2 is running is skipped
+    UPDATE orders SET status = 'EXPIRED', status_reason = '…'
+     WHERE id = ANY(claimed) AND status = 'PENDING'  RETURNING id
+    lock the affected products in id order (same order as checkout → no deadlocks)
+    stock += quantity for the items of the orders that changed
+  COMMIT
+```
+
+| Property | How it is guaranteed |
+|---|---|
+| Fresh orders are never touched | Age is computed with the **database** clock (`now()`), not the instance clock. The timeout must be ≥ 60 s (config validation). The default of 10 min is far beyond any request lifetime (ALB idle timeout 60 s) |
+| Each order is processed once, even with many instances | `FOR UPDATE SKIP LOCKED` + conditional `UPDATE … WHERE status = 'PENDING'` |
+| Stock restored exactly once | Restored in the same transaction, only for rows whose status actually changed. A second run finds nothing |
+| PAID / PAYMENT_FAILED never modified | Only `status = 'PENDING'` rows are selected and updated |
+| No payment data | `status_reason` is a fixed text; logs carry only `orderId` and age |
+
+**Why `EXPIRED`, not `PAYMENT_FAILED`:** after a crash the payment outcome is unknown, and `PAYMENT_FAILED` tells the customer "no money was taken".
+
+**Effect on the API:**
+- Replaying the key of an expired checkout returns **409 `CHECKOUT_EXPIRED`** (the key is used up; the client must start a new checkout).
+- If a payment call outlives the timeout and the order expires meanwhile, TX2 changes nothing (conditional update). The request then also returns 409 `CHECKOUT_EXPIRED`, and an error-level log `outcome: expired_during_payment` (counted by the `AppErrors` metric) flags a possible refund.
+
+Configuration (environment variables): `PENDING_ORDER_REAPER_ENABLED` (true), `PENDING_ORDER_TIMEOUT_SECONDS` (600, minimum 60), `PENDING_ORDER_REAPER_INTERVAL_SECONDS` (60, minimum 5), `PENDING_ORDER_REAPER_BATCH_SIZE` (100, 1–1000).

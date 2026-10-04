@@ -97,6 +97,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 - **Duplicate checkout prevention:** `orders.idempotency_key UUID UNIQUE`. The insert uses `ON CONFLICT DO NOTHING`. If the key exists, the server compares a SHA-256 hash of the request body:
   - same body, order finished → `200` with the original order (safe replay)
   - same body, still `PENDING` → `409 Conflict` "in progress"
+  - same body, order `EXPIRED` by the pending-order reaper → `409 CHECKOUT_EXPIRED` (Phase 5)
   - different body → `422` "idempotency key reused with different payload"
 
   Because the constraint lives in the **database**, this works across all instances. Per-instance in-memory checks would not.
@@ -104,6 +105,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 - **Server-side pricing:** totals are computed from DB prices. Money is stored as integer cents.
 - **Migrations:** run at container start under a Postgres **advisory lock**, so several instances booting at once cannot race.
 - **Connection budget:** pool of 10 per instance × max 2 instances = 20 connections (max 4 → 40 if the vCPU quota is raised), well under the ~80 a `db.t4g.micro` allows.
+- **Stuck checkouts:** a reaper on every instance expires orders left `PENDING` for over 10 minutes (an instance died mid-checkout) and releases their stock exactly once (docs/02, "Stale PENDING orders").
 - **Graceful shutdown:** on `SIGTERM` (scale-in or instance refresh), stop accepting requests, finish in-flight ones and close the pool. The ALB deregistration delay is set to 30 s.
 
 ## 5. Observability (Unit V)

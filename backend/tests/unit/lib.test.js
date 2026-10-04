@@ -102,3 +102,43 @@ describe('loadConfig', () => {
     delete process.env.PORT;
   });
 });
+
+describe('loadConfig: pending-order reaper', () => {
+  const vars = [
+    'PENDING_ORDER_REAPER_ENABLED',
+    'PENDING_ORDER_TIMEOUT_SECONDS',
+    'PENDING_ORDER_REAPER_INTERVAL_SECONDS',
+    'PENDING_ORDER_REAPER_BATCH_SIZE',
+  ];
+  const clear = () => vars.forEach((v) => delete process.env[v]);
+
+  it('defaults to enabled, 10-minute timeout, 60 s interval, batches of 100', () => {
+    clear();
+    expect(loadConfig().pendingOrderReaper).toEqual({ enabled: true, timeoutSeconds: 600, intervalSeconds: 60, batchSize: 100 });
+  });
+
+  it('is configurable from the environment', () => {
+    process.env.PENDING_ORDER_REAPER_ENABLED = 'false';
+    process.env.PENDING_ORDER_TIMEOUT_SECONDS = '900';
+    process.env.PENDING_ORDER_REAPER_INTERVAL_SECONDS = '30';
+    process.env.PENDING_ORDER_REAPER_BATCH_SIZE = '25';
+    expect(loadConfig().pendingOrderReaper).toEqual({ enabled: false, timeoutSeconds: 900, intervalSeconds: 30, batchSize: 25 });
+    clear();
+  });
+
+  it('refuses a timeout short enough to expire checkouts that are still running', () => {
+    process.env.PENDING_ORDER_TIMEOUT_SECONDS = '30';
+    expect(() => loadConfig()).toThrow(/at least 60/);
+    clear();
+  });
+
+  it.each([
+    ['PENDING_ORDER_REAPER_INTERVAL_SECONDS', '1'],
+    ['PENDING_ORDER_REAPER_BATCH_SIZE', '0'],
+    ['PENDING_ORDER_REAPER_BATCH_SIZE', '5000'],
+  ])('rejects %s=%s', (name, value) => {
+    process.env[name] = value;
+    expect(() => loadConfig()).toThrow(new RegExp(name));
+    clear();
+  });
+});

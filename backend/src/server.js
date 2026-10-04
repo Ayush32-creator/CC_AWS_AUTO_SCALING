@@ -8,6 +8,7 @@ import { runMigrations } from './db/migrate.js';
 import { createPool } from './db/pool.js';
 import { createInstanceMetadata } from './lib/instanceMetadata.js';
 import { createMockPayment } from './payment/mockPayment.js';
+import { createPendingOrderReaper } from './services/pendingOrderReaper.js';
 
 const config = loadConfig();
 const logger = pino({
@@ -31,8 +32,20 @@ const app = createApp({
   publicDir: config.publicDir,
 });
 
+// Releases stock held by checkouts that never finished (e.g. an instance died
+// mid-checkout). Runs on every instance; row locks keep the instances apart.
+const reaperCfg = config.pendingOrderReaper;
+const reaper = createPendingOrderReaper({
+  pool,
+  logger,
+  timeoutSeconds: reaperCfg.timeoutSeconds,
+  batchSize: reaperCfg.batchSize,
+  intervalMs: reaperCfg.intervalSeconds * 1000,
+});
+
 const server = app.listen(config.port, () => {
   logger.info({ port: config.port, env: config.env }, 'Checkout API listening');
+  if (reaperCfg.enabled) reaper.start();
 });
 // Keep-alive must outlive the ALB idle timeout (60 s) to avoid sporadic 502s.
 server.keepAliveTimeout = 65000;
@@ -51,6 +64,7 @@ async function shutdown(signal) {
   forceExit.unref();
 
   server.close(async () => {
+    await reaper.stop().catch(() => {});
     await pool.end().catch(() => {});
     logger.info('Shutdown complete');
     process.exit(0);

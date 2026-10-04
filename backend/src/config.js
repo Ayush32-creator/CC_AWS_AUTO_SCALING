@@ -48,5 +48,29 @@ export function loadConfig() {
     // Disable EC2 metadata lookups when not running on AWS (tests, local).
     instanceMetadata: boolEnv('INSTANCE_METADATA_ENABLED', false),
     shutdownTimeoutMs: intEnv('SHUTDOWN_TIMEOUT_MS', 25000),
+    pendingOrderReaper: reaperConfig(),
   };
+}
+
+// A healthy checkout is PENDING for well under a second, and no request can
+// outlive the ALB idle timeout (60 s). The default timeout (10 min) is far
+// beyond that; anything below 60 s is refused so live checkouts are never
+// expired by a misconfiguration.
+export const MIN_PENDING_TIMEOUT_SECONDS = 60;
+
+function reaperConfig() {
+  const cfg = {
+    enabled: boolEnv('PENDING_ORDER_REAPER_ENABLED', true),
+    timeoutSeconds: intEnv('PENDING_ORDER_TIMEOUT_SECONDS', 600),
+    intervalSeconds: intEnv('PENDING_ORDER_REAPER_INTERVAL_SECONDS', 60),
+    batchSize: intEnv('PENDING_ORDER_REAPER_BATCH_SIZE', 100),
+  };
+  if (cfg.timeoutSeconds < MIN_PENDING_TIMEOUT_SECONDS) {
+    throw new Error(`PENDING_ORDER_TIMEOUT_SECONDS must be at least ${MIN_PENDING_TIMEOUT_SECONDS}`);
+  }
+  if (cfg.intervalSeconds < 5) throw new Error('PENDING_ORDER_REAPER_INTERVAL_SECONDS must be at least 5');
+  if (cfg.batchSize < 1 || cfg.batchSize > 1000) {
+    throw new Error('PENDING_ORDER_REAPER_BATCH_SIZE must be between 1 and 1000');
+  }
+  return cfg;
 }
