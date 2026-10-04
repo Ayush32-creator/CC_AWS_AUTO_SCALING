@@ -1,6 +1,6 @@
 # 01 — Architecture & Design Decisions
 
-> Phase 1 deliverable. Status: **awaiting review**.
+> Phase 1 deliverable (approved), kept up to date through Phase 5. Final values (ASG 1/1/2, no NAT by default, Region ap-southeast-2) are summarised in the README "Final state".
 
 ## 1. High-level architecture
 
@@ -13,10 +13,10 @@ flowchart LR
         igw[Internet Gateway]
         subgraph pub[Public subnets  10.0.1.0/24 · 10.0.2.0/24]
           alb[Application Load Balancer]
-          nat[NAT Gateway]
+          nat[NAT Gateway<br/>optional, off by default]
         end
-        subgraph app[Private app subnets  10.0.11.0/24 · 10.0.12.0/24]
-          subgraph asg[Auto Scaling Group  min 1 · desired 2 · max 4]
+        subgraph app[App subnets  10.0.11.0/24 · 10.0.12.0/24, used only with NAT; default: public subnets]
+          subgraph asg[Auto Scaling Group  min 1 · desired 1 · max 2]
             ec2a[EC2 t3.micro<br/>Docker: checkout-app]
             ec2b[EC2 t3.micro<br/>Docker: checkout-app]
           end
@@ -34,7 +34,7 @@ flowchart LR
     igw --- alb
     alb -->|:3000 health-checked| ec2a & ec2b
     ec2a & ec2b -->|:5432 TLS| rds
-    ec2a & ec2b -.->|pull image via NAT| ecr
+    ec2a & ec2b -.->|pull image: public IP, or NAT if enabled| ecr
     ec2a & ec2b -.->|GetSecretValue| sm
     ec2a & ec2b -.->|awslogs driver, metric filters| cw
     alb -.->|metrics| cw
@@ -75,7 +75,7 @@ flowchart LR
 | Subnet tier | CIDRs (AZ a / AZ b) | Route table | Contents |
 |---|---|---|---|
 | Public | 10.0.1.0/24, 10.0.2.0/24 | `0.0.0.0/0 → IGW` | ALB, NAT Gateway |
-| Private-app | 10.0.11.0/24, 10.0.12.0/24 | `0.0.0.0/0 → NAT` | EC2 instances (private IPs only) |
+| Private-app | 10.0.11.0/24, 10.0.12.0/24 | `0.0.0.0/0 → NAT` | EC2 instances (private IPs only), **only when `enable_nat_gateway = true`**; by default instances run in the public subnets (cost toggle below) |
 | Private-DB | 10.0.21.0/24, 10.0.22.0/24 | local only | RDS (no internet route at all) |
 
 Two AZs are the minimum: the ALB and the RDS subnet group both require subnets in two or more AZs. Region: **ap-southeast-2 (Sydney)**, AZs `ap-southeast-2a` and `ap-southeast-2b`. *(Changed in Phase 4 from ap-south-1: the AWS project is assigned to Sydney, and a project can create Regional resources only in its assigned Region.)*
@@ -87,7 +87,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
 | SG | Inbound | Outbound |
 |---|---|---|
 | `alb-sg` | TCP 80 from `0.0.0.0/0` | TCP 3000 → `app-sg` |
-| `app-sg` | TCP 3000 **from `alb-sg` only** | 443 → anywhere (ECR, Secrets Manager, CloudWatch via NAT); 5432 → `db-sg` |
+| `app-sg` | TCP 3000 **from `alb-sg` only** | 443 → anywhere (ECR, Secrets Manager, CloudWatch; via public IP, or NAT if enabled); 5432 → `db-sg` |
 | `db-sg` | TCP 5432 **from `app-sg` only** | none |
 
 **Cost toggle:** `enable_nat_gateway = false` puts instances in the public subnets with public IPs. Inbound traffic is still restricted to `alb-sg`, so the instances are unreachable except through the ALB. **Since Phase 4 the default is `false`** (decision and reasoning in docs/06 §7). It saves ~$0.054/h in Sydney, about 30% of the hourly cost. The private-subnet + NAT design above is unchanged and can be turned on for a session with `enable_nat_gateway = true`, for example to capture route-table evidence for the report.
@@ -115,7 +115,7 @@ Two AZs are the minimum: the ALB and the RDS subnet group both require subnets i
   *(Changed in Phase 2: the original plan said Embedded Metric Format. EMF is only extracted when the log shipper sends the `x-amzn-logs-format: json/emf` header, and Docker's `awslogs` driver does not send it.)*
 - **Dashboard** (Terraform, `cc-checkout-dev`): ASG in-service/desired, ALB requests and requests per target, target health, TargetResponseTime p50/p95, 5xx/4xx, EC2 CPU, RDS CPU/connections/free storage, OrdersPlaced/OrdersFailed, CheckoutLatency p50/p95, AppErrors, and an alarm overview.
 - **Alarms:** ALB 5xx rate > 5% (only when ≥ 10 req/min), **HealthyHostCount < 1** for 2 min, p95 latency > 1 s, RDS CPU > 80%. Optional SNS email (`alarm_email`). *(Changed in Phase 5: the plan said UnHealthyHostCount > 0, but a new instance is unhealthy for ~2 min during every scale-out (docs/07 §3), so that alarm would fire on normal scaling. "No healthy target" is the real outage signal.)*
-- **Footer badge:** the SPA shows "served by `i-0abc…` (us-east-1a)" via `GET /api/instance`, so load balancing and scaling are visible during the demo.
+- **Footer badge:** the SPA shows "served by `i-0abc…` (ap-southeast-2a)" via `GET /api/instance`, so load balancing and scaling are visible during the demo.
 
 ## 6. Availability & SLA view
 

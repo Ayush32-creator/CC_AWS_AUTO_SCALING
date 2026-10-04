@@ -87,7 +87,7 @@ The flags were first tested locally with the same image. The app starts, serves 
 
 | Check | Result |
 |---|---|
-| Tags | `IMMUTABLE`; deployments use git SHAs (`8bc96ee` kept for rollback, `a0cbc11` running) |
+| Tags | `IMMUTABLE`; deployments use git SHAs (at review time `a0cbc11` was running and `8bc96ee` kept for rollback; since Phase 5 increment 4: `f85f094` running, `a0cbc11` rollback) |
 | Scanning | Basic scan on push. `a0cbc11` and `8bc96ee`: **0 findings** (OS packages) |
 | Node dependencies | `npm audit --omit=dev`: backend **0**, frontend **0** vulnerabilities |
 | Lifecycle | Keep 5 tagged releases; expire unreferenced untagged images after 1 day |

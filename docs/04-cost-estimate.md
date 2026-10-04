@@ -41,7 +41,7 @@ Compared with the Mumbai estimate (≈ $0.16/h with NAT), Sydney prices are abou
 
 ## Project budget: $100 credits, Free plan
 
-The AWS project is on the **Free plan** with **$100 credits**, expiring **2027-04-04** (checked 2026-10-04 with `aws freetier get-account-plan-state`). The credits are a hard ceiling for this project, not a target to spend.
+The AWS project is on the **Free plan** with **$100 credits**, expiring **2027-04-04** (checked 2026-10-04 with `aws freetier get-account-plan-state`). The credits are a hard ceiling for this project, not a target to spend. *(On 2026-10-05 the remaining credits showed **$160**: the Free plan added credits during the project.)*
 
 | Scenario | Hours deployed | Cost | Share of credits |
 |---|---|---|---|

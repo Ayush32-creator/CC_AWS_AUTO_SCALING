@@ -1,6 +1,6 @@
 # 06 — Infrastructure as Code (Terraform)
 
-> Phase 3 deliverable. Nothing in this document has been applied yet. Deployment is Phase 4 and needs explicit approval.
+> Phase 3 deliverable, extended with the Phase 4 and 5 deployment records (§7–§10). Both stacks are deployed: bootstrap 17 resources, dev 54 resources; the plan shows no changes. For image deployments use `scripts/deploy.sh` (docs/09).
 
 ## 1. Layout: two stacks
 
@@ -128,7 +128,9 @@ Tip: the AWS provider is about 800 MB. A plugin cache (`plugin_cache_dir` in `%A
 3. **Budget email.** After the bootstrap apply, confirm the subscription email AWS sends.
 4. **Docker Desktop running**, so the image can be built and pushed.
 
-## 5. Phase 4 runbook (preview; not executed yet)
+## 5. Phase 4 runbook (first deployment; executed 2026-10-04)
+
+For later **image** deployments use `scripts/deploy.sh` (docs/09) instead of steps 2–3.
 
 ```powershell
 # 1. Bootstrap (one time)
@@ -150,7 +152,7 @@ cd ..\envs\dev
 copy backend.hcl.example backend.hcl                 # bucket = <state_bucket output>
 copy terraform.tfvars.example terraform.tfvars       # image_tag, artifacts_bucket_name
 terraform init -backend-config=backend.hcl
-terraform plan -out=tfplan                           # review (~45 resources)
+terraform plan -out=tfplan                           # review (45 resources at first deploy; 54 after Phase 5)
 terraform apply tfplan                               # RDS takes ~5-10 min
 terraform output app_url
 

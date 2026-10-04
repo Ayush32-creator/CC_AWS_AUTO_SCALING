@@ -2,7 +2,22 @@
 
 A cloud computing course project: a React + Node.js checkout application deployed on AWS. It runs on EC2 instances in an Auto Scaling Group behind an Application Load Balancer, uses RDS PostgreSQL for storage, and is monitored with CloudWatch. All infrastructure is provisioned with Terraform.
 
-**Current status:** Phase 4 in progress. The bootstrap stack (S3 state and artifacts buckets, ECR repository, $10 budget alert) is deployed in AWS project `cc-project`. The dev stack (45 resources, about $0.10/h with 1 instance) is **running** for testing. Run `terraform destroy` in `infra/envs/dev` when you finish. Region: ap-southeast-2 (Sydney).
+**Status:** Phases 1–5 complete (final validation 2026-10-05). The dev stack is deployed and healthy. Phase 6 (formal load-test report) remains; the Phase 4 scaling tests are in docs/07.
+
+## Final state
+
+| Item | Value |
+|---|---|
+| AWS | project `cc-project`, Free plan, region **ap-southeast-2** (Sydney), the only Region the project allows |
+| Infrastructure | Terraform. `infra/bootstrap`: 17 resources (S3 state + artifacts, ECR, $10 budget). `infra/envs/dev`: **54 resources**. Plan shows no changes |
+| Compute | ASG **min 1 / desired 1 / max 2** `t3.micro` (max limited by the project's 5-vCPU quota), rolling instance refresh. No NAT Gateway: instances have public IPs and accept traffic only from the ALB |
+| Load balancer | ALB, **HTTP only** (HTTPS needs a domain + ACM certificate) |
+| Database | RDS PostgreSQL 16 `db.t4g.micro`, private, encrypted, TLS forced. **Backup retention 1 day**, the AWS Free plan maximum |
+| Application image | **`cc-checkout:f85f094`** (running). Previous known-good image for rollback: **`a0cbc11`** |
+| CI | **GitHub Actions** (`.github/workflows/ci.yml`), private repo, read-only token, **no AWS credentials or permissions** |
+| CD | **`scripts/deploy.sh`**, run by the developer with `aws login`: guarded plan (image change only), rolling refresh, verification, `--rollback <tag>` |
+| Why not GitHub OIDC | The AWS project's managed service control policy denies `iam:*Provider*`, so the IAM OIDC provider cannot be created. Deployment is therefore intentionally developer-controlled, and **no AWS credentials are stored in GitHub** |
+| Cost | ≈ $0.10/h while the dev stack runs. Run `terraform destroy` in `infra/envs/dev` when it is not needed; the bootstrap stack costs < $0.10/month |
 
 | Doc | Contents |
 |---|---|
@@ -25,7 +40,10 @@ frontend/    React + Vite SPA, tests
 docker/      Postgres init script (creates the checkout_test database)
 infra/       Terraform: bootstrap/ (state, ECR, budget), modules/, envs/dev/
 docker-compose.yml, .env.example
-docs/        Design documentation
+docs/        Design documentation, test results (docs/07), evidence/
+loadtest/    k6 scripts
+scripts/     deploy.sh (guarded deploy + rollback, docs/09)
+.github/     GitHub Actions CI (no AWS access)
 ```
 
 ## Run locally (Docker Compose)
@@ -87,4 +105,10 @@ Full details are in [docs/02-api-and-data-model.md](docs/02-api-and-data-model.m
 
 ## Infrastructure (Terraform)
 
-See [docs/06-infrastructure.md](docs/06-infrastructure.md) for the module overview, offline validation commands (`terraform validate`, `terraform test`, TFLint, Trivy), the AWS-side prerequisites, and the Phase 4 deploy/destroy runbook.
+See [docs/06-infrastructure.md](docs/06-infrastructure.md) for the module overview, offline validation commands (`terraform validate`, `terraform test`, TFLint, Trivy), the AWS-side prerequisites, and the first-deployment runbook. Deploy or roll back application images with `scripts/deploy.sh` ([docs/09-ci-cd.md](docs/09-ci-cd.md)):
+
+```bash
+aws login --region ap-southeast-2 --profile cc-project
+scripts/deploy.sh                      # deploy the current (CI-green) commit
+scripts/deploy.sh --rollback a0cbc11   # redeploy a previous image
+```

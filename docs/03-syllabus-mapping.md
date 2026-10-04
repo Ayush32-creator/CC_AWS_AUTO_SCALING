@@ -24,7 +24,7 @@
 | | IAM & security | Least-privilege instance role (+ explicit Parameter Store deny), hardened container (read-only, no capabilities), Secrets Manager, no SSH, CI without any cloud credentials | docs/08-security-review.md, IAM policy JSON |
 | | DevOps | GitHub Actions CI (tests, Terraform checks, lint, secret/IaC/image scans, hardened smoke run) + guarded one-command CD with rollback, IaC | Workflow runs, docs/09-ci-cd.md |
 | **VI — Networking & Security** | VPC & subnets | 3-tier subnet design across 2 AZs | Network diagram |
-| | Public/private IPs, routing | Public subnets via IGW; private via NAT; DB tier with no internet route | Route table screenshots |
+| | Public/private IPs, routing | Public subnets via IGW (instances use public IPs by default; private app subnets via NAT are an optional toggle); DB tier with no internet route | Route table screenshots |
 | | Security groups | Chained ALB → App → DB SGs | SG rules table |
 | | Load balancing | ALB with health checks, deregistration delay, cross-zone | Target group health screenshot |
 | | Secure communication | TLS to RDS enforced, encryption at rest (RDS, EBS, S3), IMDSv2 required | Config excerpts |
