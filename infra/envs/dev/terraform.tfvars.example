@@ -8,7 +8,7 @@ artifacts_bucket_name = "cc-checkout-artifacts-<ACCOUNT_ID>"
 # enable_nat_gateway   = false           # true = private app subnets behind NAT (~$0.059/h + $0.059/GB)
 # alb_ingress_cidrs    = ["0.0.0.0/0"]   # e.g. ["203.0.113.7/32"] to allow only your IP
 # asg_min_size         = 1
-# asg_desired_capacity = 2
+# asg_desired_capacity = 1
 # asg_max_size         = 2               # vCPU quota 5 allows 2 x t3.micro; raise after a quota increase
 # target_requests_per_instance_per_minute = 300
 # target_cpu_percent   = 60

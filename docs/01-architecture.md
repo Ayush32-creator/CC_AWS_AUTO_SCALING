@@ -138,7 +138,7 @@ Composite (serial) ≈ 0.9999 × 0.9999 × 0.995 ≈ **99.48%**. The database is
 
 Two stacks separate cheap persistent resources from hourly-billed ones:
 
-- **`infra/bootstrap/`** (apply once, keep; pennies/month): S3 state bucket (versioned, encrypted, native S3 lockfile), ECR repo with a lifecycle policy (keep last 5 images), GitHub OIDC role, AWS Budget alert ($10).
+- **`infra/bootstrap/`** (apply once, keep; pennies/month): S3 state bucket (versioned, encrypted, native S3 lockfile), ECR repo with a lifecycle policy (keep the last 5 tagged releases; untagged leftovers removed), GitHub OIDC role, AWS Budget alert ($10).
 - **`infra/envs/dev/`** (apply for a session, destroy afterwards): composes modules `network`, `security`, `database`, `alb`, `compute`, `monitoring`.
 
 Everything is driven by variables (region, CIDRs, instance type, ASG sizes, scaling targets, image tag), and outputs include the ALB URL, ASG name and dashboard URL.

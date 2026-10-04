@@ -28,7 +28,7 @@ variable "budget_alert_emails" {
 }
 
 variable "ecr_keep_last_images" {
-  description = "Number of most recent images kept in ECR; older ones are expired."
+  description = "Number of most recent releases (tagged images, each with its untagged index children) kept in ECR; older ones are expired."
   type        = number
   default     = 5
 }

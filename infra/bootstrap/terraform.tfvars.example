@@ -3,6 +3,7 @@ region  = "ap-southeast-2"
 project = "cc-checkout"
 
 # Strongly recommended: get an email before spend exceeds the budget.
-# AWS sends a confirmation email to each address first.
+# AWS Budgets emails these addresses directly; no confirmation step is needed.
+# Alerts come from aws-budgets@costalerts.amazonaws.com (check spam filters).
 budget_limit_usd    = 10
 budget_alert_emails = ["you@example.com"]

@@ -206,19 +206,39 @@ resource "aws_ecr_repository" "app" {
   }
 }
 
+# Docker Desktop pushes each build as an OCI image index (tagged with the git
+# SHA) that references untagged children: the amd64 image manifest and a
+# build attestation. Counting only *tagged* images makes "keep N" mean N
+# complete releases. ECR never expires an image still referenced by an index,
+# so children of retained releases are safe; once a release's index expires,
+# its children become unreferenced and rule 2 removes them.
 resource "aws_ecr_lifecycle_policy" "app" {
   repository = aws_ecr_repository.app.name
   policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep only the last ${var.ecr_keep_last_images} images"
-      selection = {
-        tagStatus   = "any"
-        countType   = "imageCountMoreThan"
-        countNumber = var.ecr_keep_last_images
-      }
-      action = { type = "expire" }
-    }]
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the last ${var.ecr_keep_last_images} releases (tagged images)"
+        selection = {
+          tagStatus      = "tagged"
+          tagPatternList = ["*"]
+          countType      = "imageCountMoreThan"
+          countNumber    = var.ecr_keep_last_images
+        }
+        action = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Remove untagged images no release references any more"
+        selection = {
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 1
+        }
+        action = { type = "expire" }
+      },
+    ]
   })
 }
 

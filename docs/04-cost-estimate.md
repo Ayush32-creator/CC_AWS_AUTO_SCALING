@@ -8,17 +8,17 @@ Default configuration: `enable_nat_gateway = false` (see docs/06 §6).
 
 | Resource | Qty | Rate (Sydney) | Per hour |
 |---|---|---|---|
-| EC2 t3.micro | 2 (baseline) | $0.0132/h | $0.026 |
-| EBS gp3 root, 8 GB, encrypted | 2 | $0.096/GB-month | $0.002 |
+| EC2 t3.micro | 1 (baseline) – 2 (max) | $0.0132/h | $0.013 – $0.026 |
+| EBS gp3 root, 8 GB, encrypted | 1 – 2 | $0.096/GB-month | $0.001 – $0.002 |
 | Application Load Balancer | 1 | $0.0252/h + $0.008/LCU-h (~1 LCU) | ~$0.033 |
-| Public IPv4 addresses (ALB ×2, instances ×2) | 4 | $0.005/h | $0.020 |
+| Public IPv4 addresses (ALB ×2, instances ×1–2) | 3 – 4 | $0.005/h | $0.015 – $0.020 |
 | RDS db.t4g.micro PostgreSQL, Single-AZ | 1 | $0.025/h | $0.025 |
 | RDS gp3 storage 20 GB (+ backups ≤ 20 GB, free) | 20 GB | $0.138/GB-month | $0.004 |
 | Secrets Manager (RDS-managed secret) | 1 | $0.40/month + $0.05/10k calls | < $0.001 |
 | CloudWatch (detailed monitoring, ASG group metrics, logs at $0.67/GB) | — | $0.30/metric-month, pro-rated | ~$0.01 |
 | S3 gateway endpoint | 1 | free | $0 |
-| **Total, baseline (2 instances)** | | | **≈ $0.12/h** |
-| Total at max scale (`asg_max_size = 2`, limited by the 5-vCPU quota) | | | ≈ $0.12/h |
+| **Total, baseline (1 instance, `asg_desired_capacity = 1`)** | | | **≈ $0.10/h** |
+| Total at max scale (2 instances; `asg_max_size = 2` because of the 5-vCPU quota) | | | ≈ $0.12/h |
 | Total at 4 instances (only after a quota increase) | | | ≈ $0.17/h |
 | Total with `enable_nat_gateway = true` (2 instances) | +NAT $0.059/h, +1 EIP, −2 instance IPs | | ≈ $0.18/h (+ $0.059/GB through NAT) |
 
@@ -44,9 +44,9 @@ The AWS project is on the **Free plan** with **$100 credits**, expiring **2027-0
 
 | Scenario | Hours deployed | Cost | Share of credits |
 |---|---|---|---|
-| Phase 4–6 sessions, destroyed after each | ~30 h | **≈ $4** | ~4% |
+| Phase 4–6 sessions, destroyed after each (mostly 1 instance, 2 during load tests) | ~30 h | **≈ $3–4** | ~3–4% |
 | Same, with NAT enabled | ~30 h | ≈ $5.50 | ~6% |
-| ⚠️ Forgotten and left running for a month (no NAT) | 730 h | **≈ $90** | ~90% |
+| ⚠️ Forgotten and left running for a month (no NAT) | 730 h | **≈ $73 (1 instance) – $88 (2)** | ~75–90% |
 | ⚠️ Forgotten for a month with NAT | 730 h | ≈ $130 | more than all credits |
 
 ## Guardrails

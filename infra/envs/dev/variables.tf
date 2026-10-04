@@ -95,8 +95,9 @@ variable "asg_min_size" {
 }
 
 variable "asg_desired_capacity" {
+  # Start with one instance so load tests show scale-out from 1 to 2.
   type    = number
-  default = 2
+  default = 1
 
   validation {
     condition     = var.asg_desired_capacity >= var.asg_min_size && var.asg_desired_capacity <= var.asg_max_size

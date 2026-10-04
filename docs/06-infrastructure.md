@@ -29,7 +29,7 @@ Why two stacks:
 
 | Module | Resources | Key settings |
 |---|---|---|
-| bootstrap | 2 × S3 bucket (+ versioning, SSE-S3, public-access block, ownership, TLS-only policy, lifecycle), ECR repo + lifecycle policy, Budget | ECR tags are **immutable** and scanned on push. Only the last 5 images are kept. The ALB log delivery principal is allowed into `alb-logs/`. Budget alerts at 50% forecast and 100% actual. |
+| bootstrap | 2 × S3 bucket (+ versioning, SSE-S3, public-access block, ownership, TLS-only policy, lifecycle), ECR repo + lifecycle policy, Budget | ECR tags are **immutable** and scanned on push. The last 5 **tagged** releases are kept, and unreferenced untagged images are removed after 1 day (see §7). The ALB log delivery principal is allowed into `alb-logs/`. Budget alerts at 50% forecast and 100% actual. |
 | network | VPC, IGW, 2 public + 2 app + 2 DB subnets, 3 route tables, NAT GW + EIP (optional), S3 gateway endpoint, default-SG lockdown | DB route table has **no** internet route. The S3 endpoint is free and keeps ECR layer downloads off the NAT. |
 | security | 3 SGs, 6 rules | ALB: 80 from `alb_ingress_cidrs`. App: 3000 from ALB SG only; egress 443 and 5432 → DB SG. DB: 5432 from app SG only. |
 | database | DB subnet group, parameter group, `aws_db_instance`, log group | `manage_master_user_password` (Secrets Manager), `rds.force_ssl=1`, storage encrypted, not public, Single-AZ, 7-day backups (free up to the DB size). |
@@ -216,5 +216,14 @@ Every service used is on the Free plan list of the [new AWS sign-up supported se
 | `ecr_repository_url` | `498245873403.dkr.ecr.ap-southeast-2.amazonaws.com/cc-checkout` |
 | Budget | `cc-checkout-monthly`, $10/month; email at 50% forecast and 100% actual |
 
-Verified with the AWS CLI: both buckets are in ap-southeast-2, versioned, SSE-S3, all four public-access blocks on, TLS-only policy; ALB log delivery uses the service principal. ECR tags are immutable, scanned on push, and only the last 5 images are kept. No EC2, RDS, ALB, ASG or NAT resources exist.
+Verified with the AWS CLI: both buckets are in ap-southeast-2, versioned, SSE-S3, all four public-access blocks on, TLS-only policy; ALB log delivery uses the service principal. ECR tags are immutable and scanned on push; lifecycle rule as originally written (revised below). No EC2, RDS, ALB, ASG or NAT resources exist.
+
+### ECR lifecycle policy fix
+Docker Desktop pushes each build as an **OCI image index** tagged with the git SHA. The index references two untagged children: the `linux/amd64` image manifest and a build attestation. The original rule (`tagStatus = any`, keep 5) counted all three as separate images, so it kept only about 1–2 complete releases. The revised policy:
+
+1. **Tagged images (`tagPatternList ["*"]`): keep the last 5.** Each release has exactly one tag (its git SHA), so this means 5 complete releases.
+2. **Untagged: expire after 1 day.** ECR never expires an image that is still referenced by an index, so the children of retained releases are protected. Only children whose index has expired, or stray untagged pushes, are removed. Attestations that reference a deleted image are cleaned up by ECR automatically.
+
+### Starting capacity
+`asg_desired_capacity` defaults to **1** (min 1, max 2), so load tests show the Auto Scaling group scaling out from 1 to 2 instances.
 
