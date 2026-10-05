@@ -15,23 +15,27 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // One key per checkout attempt. It is kept across automatic retries and
-  // double-clicks, and replaced only when the request itself must change
-  // (declined card, stock problem, invalid input).
   const idempotencyKey = useRef(uuidv4());
 
   if (items.length === 0) {
     return (
-      <p className="notice">
-        Nothing to check out. <Link to="/">Browse products</Link>
-      </p>
+      <section className="cart-page">
+        <div className="empty-state empty-state--wide">
+          <div className="empty-state__icon">✓</div>
+          <h1>Checkout</h1>
+          <p>Nothing to check out yet. Browse products and add a few essentials to your cart.</p>
+          <Link to="/" className="btn btn-primary">
+            Browse products
+          </Link>
+        </div>
+      </section>
     );
   }
 
-  const update = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }));
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     if (submitting) return;
     setSubmitting(true);
     setError(null);
@@ -53,74 +57,77 @@ export default function CheckoutPage() {
     }
   }
 
-  // Validation errors from the API come back as [{ path, message }].
-  const fieldErrors = new Map(Array.isArray(error?.details) ? error.details.map((d) => [d.path, d.message]) : []);
+  const fieldErrors = new Map(Array.isArray(error?.details) ? error.details.map((detail) => [detail.path, detail.message]) : []);
 
   return (
-    <section className="checkout">
-      <div>
-        <h1>Checkout</h1>
-        <ErrorMessage error={error} />
-        <form onSubmit={handleSubmit} noValidate>
-          <fieldset disabled={submitting}>
-            <legend>Contact</legend>
-            <Field label="Full name" name="customer.name" errors={fieldErrors}>
-              <input value={form.name} onChange={update('name')} autoComplete="name" required />
-            </Field>
-            <Field label="Email" name="customer.email" errors={fieldErrors}>
-              <input type="email" value={form.email} onChange={update('email')} autoComplete="email" required />
-            </Field>
-          </fieldset>
+    <section className="checkout-page">
+      <div className="checkout-layout">
+        <div className="checkout-main">
+          <p className="eyebrow">Secure checkout</p>
+          <h1>Checkout</h1>
+          <ErrorMessage error={error} />
 
-          <fieldset disabled={submitting}>
-            <legend>Payment (mock — no real charge)</legend>
-            <Field label="Card number" name="payment.cardNumber" errors={fieldErrors}>
-              <input
-                value={form.cardNumber}
-                onChange={update('cardNumber')}
-                inputMode="numeric"
-                autoComplete="cc-number"
-                placeholder="4242 4242 4242 4242"
-                required
-              />
-            </Field>
-            <div className="row">
-              <Field label="Expiry (MM/YY)" name="payment.expiry" errors={fieldErrors}>
-                <input value={form.expiry} onChange={update('expiry')} placeholder="12/30" autoComplete="cc-exp" required />
+          <form className="checkout-form" onSubmit={handleSubmit} noValidate>
+            <fieldset disabled={submitting}>
+              <legend>Contact</legend>
+              <Field label="Full name" name="customer.name" errors={fieldErrors}>
+                <input value={form.name} onChange={update('name')} autoComplete="name" required />
               </Field>
-              <Field label="CVC" name="payment.cvc" errors={fieldErrors}>
-                <input value={form.cvc} onChange={update('cvc')} inputMode="numeric" autoComplete="cc-csc" required />
+              <Field label="Email" name="customer.email" errors={fieldErrors}>
+                <input type="email" value={form.email} onChange={update('email')} autoComplete="email" required />
               </Field>
-            </div>
-            <p className="muted small">
-              Test cards: <code>4242 4242 4242 4242</code> approves · <code>4000 0000 0000 0002</code> declines.
-            </p>
-          </fieldset>
+            </fieldset>
 
-          <button type="submit" className="btn btn-wide" disabled={submitting}>
-            {submitting ? 'Placing order…' : `Pay ${formatMoney(subtotalCents)}`}
-          </button>
-        </form>
+            <fieldset disabled={submitting}>
+              <legend>Payment (mock — no real charge)</legend>
+              <Field label="Card number" name="payment.cardNumber" errors={fieldErrors}>
+                <input
+                  value={form.cardNumber}
+                  onChange={update('cardNumber')}
+                  inputMode="numeric"
+                  autoComplete="cc-number"
+                  placeholder="4242 4242 4242 4242"
+                  required
+                />
+              </Field>
+              <div className="row">
+                <Field label="Expiry (MM/YY)" name="payment.expiry" errors={fieldErrors}>
+                  <input value={form.expiry} onChange={update('expiry')} placeholder="12/30" autoComplete="cc-exp" required />
+                </Field>
+                <Field label="CVC" name="payment.cvc" errors={fieldErrors}>
+                  <input value={form.cvc} onChange={update('cvc')} inputMode="numeric" autoComplete="cc-csc" required />
+                </Field>
+              </div>
+              <p className="muted small">
+                Test cards: <code>4242 4242 4242 4242</code> approves · <code>4000 0000 0000 0002</code> declines.
+              </p>
+            </fieldset>
+
+            <button type="submit" className="btn btn-primary btn-wide" disabled={submitting}>
+              {submitting ? 'Processing your order…' : `Pay ${formatMoney(subtotalCents)}`}
+            </button>
+          </form>
+        </div>
+
+        <aside className="panel summary-panel">
+          <p className="eyebrow eyebrow--compact">Order summary</p>
+          <ul className="lines">
+            {items.map((item) => (
+              <li key={item.productId}>
+                <span>
+                  {item.quantity} × {item.name}
+                </span>
+                <span>{formatMoney(item.priceCents * item.quantity)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="lines-total">
+            <span>Total</span>
+            <strong>{formatMoney(subtotalCents)}</strong>
+          </p>
+          <p className="muted small">Final prices are confirmed by the server at payment time.</p>
+        </aside>
       </div>
-
-      <aside className="panel">
-        <h2>Order summary</h2>
-        <ul className="lines">
-          {items.map((i) => (
-            <li key={i.productId}>
-              <span>
-                {i.quantity} × {i.name}
-              </span>
-              <span>{formatMoney(i.priceCents * i.quantity)}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="lines-total">
-          <span>Total</span>
-          <strong>{formatMoney(subtotalCents)}</strong>
-        </p>
-        <p className="muted small">Final prices are confirmed by the server when you pay.</p>
-      </aside>
     </section>
   );
 }
