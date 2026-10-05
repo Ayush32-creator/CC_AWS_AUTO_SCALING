@@ -1,0 +1,16 @@
+# Phase 6 application validation after the load test, 2026-10-05 13:09:12 IST
+product 10 '65 W GaN Charger': stock before 45
+checkout: HTTP 201, status PAID, order 72453195-f639-49ff-964c-29fa60bb97ff, total 519800, Idempotent-Replayed=false
+stock after checkout: 43 (expected 43)
+replay (same Idempotency-Key): HTTP 200, Idempotent-Replayed=true, same order id: True
+stock after replay: 43 (unchanged: True)
+GET order: PAID, items [(10, 2)]
+
+## CloudWatch custom metrics (namespace cc-checkout/dev), 2026-10-05
+OrdersPlaced per minute (non-zero) since stack creation: 12:03=1.0	13:09=1.0
+OrdersFailed per minute (non-zero) since stack creation: 
+AppErrors per minute (non-zero) since stack creation: 
+CheckoutLatency samples: 12:03=1.0/154.0	13:09=1.0/183.0  (count/max ms)
+error-level log lines (level>=50) since stack creation: 0
+pending_order_expired events: 0
+alarms: cc-checkout-dev-alb-5xx-rate=OK	cc-checkout-dev-no-healthy-targets=OK	cc-checkout-dev-p95-latency=OK	cc-checkout-dev-rds-cpu=OK

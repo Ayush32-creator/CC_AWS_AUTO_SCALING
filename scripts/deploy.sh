@@ -175,6 +175,7 @@ while :; do
   echo "  $(date +%H:%M:%S) $status"
   case "${status%%[[:space:]]*}" in
     Successful) break ;;
+    None) echo "  no instance refresh has run (freshly created stack): nothing to wait for"; break ;;
     Failed|Cancelled|RollbackSuccessful|RollbackFailed) fail "instance refresh ended with: $status" ;;
   esac
   [ $(( $(date +%s) - START )) -lt $REFRESH_TIMEOUT_S ] || fail "instance refresh still running after $REFRESH_TIMEOUT_S s"
@@ -185,7 +186,8 @@ done
 log "Verify the new version behind the ALB"
 TG_ARN=$(aws elbv2 describe-target-groups --names "${ASG%-asg}-tg" --query 'TargetGroups[0].TargetGroupArn' --output text | nocr)
 for i in $(seq 1 40); do
-  states=$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --query 'TargetHealthDescriptions[].TargetHealth.State' --output text | nocr)
+  # `|| true`: a transient network error just means "not yet"; the loop retries.
+  states=$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --query 'TargetHealthDescriptions[].TargetHealth.State' --output text | nocr) || true
   versions=$(for _ in 1 2 3 4 5 6; do curl -fsS -m 5 "$URL/api/instance" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["version"])' 2>/dev/null || echo error; done | nocr | sort -u | tr '\n' ' ')
   echo "  targets: [$states]  versions served: [$versions]"
   # every target exactly "healthy" ("unhealthy" must not match) and only the new version answering

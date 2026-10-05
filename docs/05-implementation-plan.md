@@ -35,7 +35,7 @@ CC_CP/
 | 3 Docker + IaC | ✅ Complete |
 | 4 Deploy + scaling | ✅ Complete: deployed 2026-10-04; all 6 application/scaling/recovery tests passed (docs/07) |
 | 5 Ops & security | ✅ Complete: increment 1 (CloudWatch) 2026-10-04; increment 2 (pending-order reaper, image `a0cbc11`) 2026-10-04; increment 3 (security/IAM hardening, docs/08) 2026-10-05; increment 4 (GitHub Actions CI + `scripts/deploy.sh` CD, image `f85f094`, docs/09) 2026-10-05 |
-| 6 Load test & report | Not started (Phase 4 scaling/recovery results already in docs/07) |
+| 6 Load test & report | ✅ Complete 2026-10-05: baseline → 1→2 scale-out → sustained → 2→1 scale-in, 0 server errors (docs/10); failure recovery reused from docs/07 |
 
 Decisions: region **ap-southeast-2 (Sydney)**, the Region assigned to the AWS project (changed from ap-south-1 in Phase 4). Git is initialised with one commit per phase and no remote push.
 

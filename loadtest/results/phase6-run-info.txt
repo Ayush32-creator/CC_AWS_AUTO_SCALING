@@ -1,0 +1,6 @@
+base_url=http://cc-checkout-dev-alb-1172020482.ap-southeast-2.elb.amazonaws.com
+start_utc=2026-10-05T06:49:43Z
+start_ist=12:19:43
+k6_exit=99
+end_utc=2026-10-05T07:08:44Z
+end_ist=12:38:44

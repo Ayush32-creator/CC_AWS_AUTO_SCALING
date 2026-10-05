@@ -2,9 +2,9 @@
 
 A cloud computing course project: a React + Node.js checkout application deployed on AWS. It runs on EC2 instances in an Auto Scaling Group behind an Application Load Balancer, uses RDS PostgreSQL for storage, and is monitored with CloudWatch. All infrastructure is provisioned with Terraform.
 
-**Status:** Phases 1–5 complete and validated on 2026-10-05. Phase 6 (formal load testing, docs/10) is in progress.
+**Status:** Phases 1–6 complete (2026-10-05). Phase 6 load-test results: [docs/10-load-testing.md](docs/10-load-testing.md).
 
-> **Current state of AWS:** the **dev stack is destroyed** (since 2026-10-05) to avoid hourly cost. Only the bootstrap stack exists: ECR images, Terraform state, artifacts bucket and budget, < $0.10/month. The table below is the **final validated deployment state**, recreated on demand with `terraform apply` in `infra/envs/dev` (about 12 minutes; the database starts empty and is re-seeded by the migrations).
+> **Current state of AWS (2026-10-05):** the dev stack was **recreated for Phase 6 and is running** (≈ $0.10/h, 1 instance, image `f85f094`, new ALB `cc-checkout-dev-alb-1172020482…`). Destroy it with `terraform destroy` in `infra/envs/dev` when it is no longer needed; the bootstrap stack (ECR, state, artifacts, budget, < $0.10/month) always stays. The table below is the **final validated deployment state**, recreated on demand with `terraform apply` (about 10 minutes; the database starts empty and is re-seeded by the migrations).
 
 ## Final validated deployment state (2026-10-05)
 
@@ -32,6 +32,7 @@ A cloud computing course project: a React + Node.js checkout application deploye
 | [docs/07-phase4-test-results.md](docs/07-phase4-test-results.md) | Phase 4 test results: checkout, idempotency, scale-out/in, instance failure, monitoring |
 | [docs/08-security-review.md](docs/08-security-review.md) | Security review and hardening: IAM, network, EC2, RDS, secrets, container |
 | [docs/09-ci-cd.md](docs/09-ci-cd.md) | CI (GitHub Actions), deployment script, rollback, why there is no GitHub OIDC |
+| [docs/10-load-testing.md](docs/10-load-testing.md) | Phase 6 load test: baseline, scale-out, sustained, scale-in, latency, resources, errors |
 | [loadtest/](loadtest/README.md) | k6 load-test scripts and how to run them |
 
 ## Repository layout

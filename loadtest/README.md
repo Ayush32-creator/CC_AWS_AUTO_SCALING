@@ -1,12 +1,23 @@
 # Load tests (k6)
 
-Scripts run through Docker, so nothing needs installing. Run them from the repository root in PowerShell or Git Bash.
+Run from the repository root in Git Bash, either with the native k6 binary (`winget install GrafanaLabs.k6`, used in Phase 6) or through Docker (`grafana/k6`, used in Phase 4).
 
 | Script | Purpose | Used in |
 |---|---|---|
+| `phase6-load.js` | Phase 6 formal test: baseline 2 req/s (3 min), ramp to 7 req/s (1 min), sustained 7 req/s (15 min); DB-backed reads (products, product, cart quote) + `/api/instance`; no orders created; fails fast without a valid `BASE_URL` | Phase 6 (docs/10) |
+| `watch-scaling.sh` | Prints ASG desired/instances, target health and CloudWatch (ALB requests, req/target, 5xx, EC2 CPU, RDS CPU/connections) every ~30 s | Phase 6 |
 | `scaleout-ramp.js` | Read-only ramp: ~3 req/s for 3 min (≈180 req/target/min), then ~7 req/s (≈420 req/target/min) for up to 10 min. Pushes the ASG across the 300 req/target/min scale-out threshold. Creates no orders. | Phase 4 Auto Scaling test (docs/07) |
 
-## Run
+## Run (Phase 6, native k6: lighter than Docker on a low-RAM machine)
+
+```bash
+export AWS_PROFILE=cc-project AWS_REGION=ap-southeast-2
+URL=$(terraform -chdir=infra/envs/dev output -raw app_url)
+loadtest/watch-scaling.sh >> loadtest/results/timeline.txt &     # optional
+k6 run -e BASE_URL="$URL" loadtest/phase6-load.js                # writes loadtest/results/phase6-k6-summary.json
+```
+
+## Run in Docker (Phase 4 script)
 
 ```bash
 # Git Bash (MSYS_NO_PATHCONV stops Git Bash rewriting the container path)
