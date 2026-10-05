@@ -2,18 +2,20 @@
 
 A cloud computing course project: a React + Node.js checkout application deployed on AWS. It runs on EC2 instances in an Auto Scaling Group behind an Application Load Balancer, uses RDS PostgreSQL for storage, and is monitored with CloudWatch. All infrastructure is provisioned with Terraform.
 
-**Status:** Phases 1–5 complete (final validation 2026-10-05). The dev stack is deployed and healthy. Phase 6 (formal load-test report) remains; the Phase 4 scaling tests are in docs/07.
+**Status:** Phases 1–5 complete and validated on 2026-10-05. Phase 6 (formal load testing, docs/10) is in progress.
 
-## Final state
+> **Current state of AWS:** the **dev stack is destroyed** (since 2026-10-05) to avoid hourly cost. Only the bootstrap stack exists: ECR images, Terraform state, artifacts bucket and budget, < $0.10/month. The table below is the **final validated deployment state**, recreated on demand with `terraform apply` in `infra/envs/dev` (about 12 minutes; the database starts empty and is re-seeded by the migrations).
+
+## Final validated deployment state (2026-10-05)
 
 | Item | Value |
 |---|---|
 | AWS | project `cc-project`, Free plan, region **ap-southeast-2** (Sydney), the only Region the project allows |
-| Infrastructure | Terraform. `infra/bootstrap`: 17 resources (S3 state + artifacts, ECR, $10 budget). `infra/envs/dev`: **54 resources**. Plan shows no changes |
+| Infrastructure | Terraform. `infra/bootstrap`: 17 resources (S3 state + artifacts, ECR, $10 budget), always kept. `infra/envs/dev`: **54 resources** when deployed; plan showed no changes |
 | Compute | ASG **min 1 / desired 1 / max 2** `t3.micro` (max limited by the project's 5-vCPU quota), rolling instance refresh. No NAT Gateway: instances have public IPs and accept traffic only from the ALB |
 | Load balancer | ALB, **HTTP only** (HTTPS needs a domain + ACM certificate) |
 | Database | RDS PostgreSQL 16 `db.t4g.micro`, private, encrypted, TLS forced. **Backup retention 1 day**, the AWS Free plan maximum |
-| Application image | **`cc-checkout:f85f094`** (running). Previous known-good image for rollback: **`a0cbc11`** |
+| Application image | **`cc-checkout:f85f094`** (the deployed version; `image_tag` in `terraform.tfvars`). Previous known-good image for rollback: **`a0cbc11`**. Both stay in ECR while the dev stack is destroyed |
 | CI | **GitHub Actions** (`.github/workflows/ci.yml`), private repo, read-only token, **no AWS credentials or permissions** |
 | CD | **`scripts/deploy.sh`**, run by the developer with `aws login`: guarded plan (image change only), rolling refresh, verification, `--rollback <tag>` |
 | Why not GitHub OIDC | The AWS project's managed service control policy denies `iam:*Provider*`, so the IAM OIDC provider cannot be created. Deployment is therefore intentionally developer-controlled, and **no AWS credentials are stored in GitHub** |
