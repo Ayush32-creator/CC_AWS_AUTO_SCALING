@@ -33,6 +33,7 @@ A cloud computing course project: a React + Node.js checkout application deploye
 | [docs/08-security-review.md](docs/08-security-review.md) | Security review and hardening: IAM, network, EC2, RDS, secrets, container |
 | [docs/09-ci-cd.md](docs/09-ci-cd.md) | CI (GitHub Actions), deployment script, rollback, why there is no GitHub OIDC |
 | [docs/10-load-testing.md](docs/10-load-testing.md) | Phase 6 load test: baseline, scale-out, sustained, scale-in, latency, resources, errors |
+| [CONTRIBUTIONS.md](CONTRIBUTIONS.md) | Team members (Ayush, Pankaj, Varad, Sampada), ownership areas and files |
 | [loadtest/](loadtest/README.md) | k6 load-test scripts and how to run them |
 
 ## Repository layout
