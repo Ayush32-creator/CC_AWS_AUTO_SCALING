@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { Server } from 'lucide-react';
 import { api } from '../lib/api.js';
 
 /**
@@ -24,7 +25,12 @@ export default function InstanceBadge() {
   if (!info) return null;
   return (
     <span className="instance" title="Instance that served the last API request">
-      served by <code>{info.instanceId}</code> ({info.availabilityZone}) · build {info.version}
+      <span className="instance-dot" aria-hidden="true" />
+      <Server size={14} aria-hidden="true" />
+      Served by <code>{info.instanceId}</code>
+      <span className="instance-meta">
+        {info.availabilityZone} · build {info.version}
+      </span>
     </span>
   );
 }

@@ -1,0 +1,86 @@
+[
+  {
+    "sku": "KB-MECH-01",
+    "file": "kb-mech-01.webp",
+    "photographer": "Jessica Lam",
+    "profile": "https://unsplash.com/@lovelle",
+    "source": "https://unsplash.com/photos/fq-Ks10WtWI"
+  },
+  {
+    "sku": "MS-WL-02",
+    "file": "ms-wl-02.webp",
+    "photographer": "Oscar Ivan Esquivel Arteaga",
+    "profile": "https://unsplash.com/@oscaresquivel",
+    "source": "https://unsplash.com/photos/ZtxED1cpB1E"
+  },
+  {
+    "sku": "HP-ANC-03",
+    "file": "hp-anc-03.webp",
+    "photographer": "Lasse Møller",
+    "profile": "https://unsplash.com/@lalasse",
+    "source": "https://unsplash.com/photos/HL4BtEXfWM0"
+  },
+  {
+    "sku": "MN-27-04",
+    "file": "mn-27-04.webp",
+    "photographer": "Linus Mimietz",
+    "profile": "https://unsplash.com/@linusmimietz",
+    "source": "https://unsplash.com/photos/gvptKmonylk"
+  },
+  {
+    "sku": "WC-1080-05",
+    "file": "wc-1080-05.webp",
+    "photographer": "Bedirhan Gül",
+    "profile": "https://unsplash.com/@bedirhann",
+    "source": "https://unsplash.com/photos/Gq8qdtRwwJs"
+  },
+  {
+    "sku": "SSD-1TB-06",
+    "file": "ssd-1tb-06.webp",
+    "photographer": "Andrey Matveev",
+    "profile": "https://unsplash.com/@zelebb",
+    "source": "https://unsplash.com/photos/pfKnGfJrrjI"
+  },
+  {
+    "sku": "HUB-USBC-07",
+    "file": "hub-usbc-07.webp",
+    "photographer": "Barry A",
+    "profile": "https://unsplash.com/@barryalbert24",
+    "source": "https://unsplash.com/photos/XxvKhAUs2PA"
+  },
+  {
+    "sku": "LS-ALU-08",
+    "file": "ls-alu-08.webp",
+    "photographer": "Workperch",
+    "profile": "https://unsplash.com/@workperch",
+    "source": "https://unsplash.com/photos/iTUZ7VcJI8M"
+  },
+  {
+    "sku": "DM-XL-09",
+    "file": "dm-xl-09.webp",
+    "photographer": "Muhammet SAIN",
+    "profile": "https://unsplash.com/@kaviaq",
+    "source": "https://unsplash.com/photos/8e9KCdOj29o"
+  },
+  {
+    "sku": "CH-65W-10",
+    "file": "ch-65w-10.webp",
+    "photographer": "Gavin Phillips",
+    "profile": "https://unsplash.com/@gavinspavin",
+    "source": "https://unsplash.com/photos/OaNfWxDJ4AI"
+  },
+  {
+    "sku": "SPK-BT-11",
+    "file": "spk-bt-11.webp",
+    "photographer": "Lynda Sanchez",
+    "profile": "https://unsplash.com/@naive_eye",
+    "source": "https://unsplash.com/photos/-WB52caEpmI"
+  },
+  {
+    "sku": "LMP-LED-12",
+    "file": "lmp-led-12.webp",
+    "photographer": "Umberto",
+    "profile": "https://unsplash.com/@umby",
+    "source": "https://unsplash.com/photos/9z2-YNeDX-c"
+  }
+]
